@@ -41,6 +41,8 @@ function(get_source_info path revision repository)
       if(git_result EQUAL 0)
         string(STRIP "${git_output}" git_output)
         set(${repository} ${git_output} PARENT_SCOPE)
+        string(REGEX REPLACE "^([^@]*):[^@]*@"
+          "\\1:REDACTED@" git_output "${git_output}")
       else()
         set(${repository} ${path} PARENT_SCOPE)
       endif()
