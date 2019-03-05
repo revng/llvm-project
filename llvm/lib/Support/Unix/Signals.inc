@@ -254,8 +254,8 @@ static struct {
 // reported as a leak. We don't make any attempt to remove our alt signal
 // stack if we remove our signal handlers; that can't be done reliably if
 // someone else is also trying to do the same thing.
-static stack_t OldAltStack;
-static void* NewAltStackPointer;
+thread_local static stack_t OldAltStack;
+thread_local static void* NewAltStackPointer;
 
 static void CreateSigAltStack() {
   const size_t AltStackSize = MINSIGSTKSZ + 64 * 1024;
@@ -271,10 +271,13 @@ static void CreateSigAltStack() {
 
   stack_t AltStack = {};
   AltStack.ss_sp = static_cast<char *>(safe_malloc(AltStackSize));
-  NewAltStackPointer = AltStack.ss_sp; // Save to avoid reporting a leak.
   AltStack.ss_size = AltStackSize;
-  if (sigaltstack(&AltStack, &OldAltStack) != 0)
+  if (sigaltstack(&AltStack, &OldAltStack) != 0) {
     free(AltStack.ss_sp);
+  } else {
+    free(NewAltStackPointer);
+    NewAltStackPointer = AltStack.ss_sp;
+  }
 }
 #else
 static void CreateSigAltStack() {}
