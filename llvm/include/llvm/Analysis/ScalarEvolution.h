@@ -208,7 +208,7 @@ public:
 
 protected:
   SCEVPredicateKind Kind;
-  ~SCEVPredicate() = default;
+  virtual ~SCEVPredicate() = default;
   SCEVPredicate(const SCEVPredicate &) = default;
   SCEVPredicate &operator=(const SCEVPredicate &) = default;
 
