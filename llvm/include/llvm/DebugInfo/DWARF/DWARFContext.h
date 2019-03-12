@@ -124,7 +124,7 @@ public:
                    WithColor::defaultErrorHandler,
                std::function<void(Error)> WarningHandler =
                    WithColor::defaultWarningHandler);
-  ~DWARFContext();
+  ~DWARFContext() override;
 
   DWARFContext(DWARFContext &) = delete;
   DWARFContext &operator=(DWARFContext &) = delete;
