@@ -67,9 +67,6 @@ WEAK-BIND-SET-DYLIB-ORDINAL-ULEB: macho-weak-bind-set-dylib-ordinal-uleb': trunc
 RUN: not llvm-objdump --macho --weak-bind %p/Inputs/macho-weak-bind-set-dylib-special-imm 2>&1 | FileCheck --check-prefix WEAK-BIND-SET-DYLIB-SPECIAL-IMM %s
 WEAK-BIND-SET-DYLIB-SPECIAL-IMM: macho-weak-bind-set-dylib-special-imm': truncated or malformed object (BIND_OPCODE_SET_DYLIB_SPECIAL_IMM not allowed in weak bind table for opcode at: 0x2)
 
-RUN: not llvm-objdump --macho --rebase %p/Inputs/macho-rebase-set-type-imm 2>&1 | FileCheck --check-prefix REBASE-SET-TYPE-IMM %s
-REBASE-SET-TYPE-IMM: macho-rebase-set-type-imm': truncated or malformed object (for REBASE_OPCODE_SET_TYPE_IMM bad bind type: 5 for opcode at: 0x0)
-
 RUN: not llvm-objdump --macho --rebase %p/Inputs/macho-rebase-uleb-malformed-uleb128 2>&1 | FileCheck --check-prefix REBASE-ULEB-MALFORMED-ULEB128 %s
 REBASE-ULEB-MALFORMED-ULEB128: macho-rebase-uleb-malformed-uleb128': truncated or malformed object (for REBASE_OPCODE_SET_SEGMENT_AND_OFFSET_ULEB malformed uleb128, extends past end for opcode at: 0x1)
 
