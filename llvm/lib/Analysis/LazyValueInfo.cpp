@@ -613,6 +613,108 @@ Optional<ValueLatticeElement> LazyValueInfoImpl::solveBlockValueImpl(
     if (auto *CI = dyn_cast<CastInst>(BBI))
       return solveBlockValueCast(CI, BB);
 
+    if (auto *IC = dyn_cast<CallInst>(BBI)) {
+      if (auto *F = IC->getCalledFunction()) {
+        if (F->getIntrinsicID() == Intrinsic::ctlz) {
+
+          Value *Argument = IC->getArgOperand(0);
+
+          using VLE = ValueLatticeElement;
+          Optional<VLE> BlockVal = getBlockValue(Argument, BB);
+
+          if (not BlockVal.hasValue())
+            return BlockVal;
+
+          VLE V = BlockVal.getValue();
+
+          const unsigned OperandBitWidth = DL.getTypeSizeInBits(BBI->getType());
+          auto GetAPInt = [OperandBitWidth] (uint64_t V) {
+            return APInt(OperandBitWidth, V);
+          };
+          auto GetRange = [&GetAPInt] (uint64_t Lower, uint64_t Upper) {
+            return VLE::getRange(ConstantRange(GetAPInt(Lower), GetAPInt(Upper)));
+          };
+
+          bool ZeroIsUndef = cast<ConstantInt>(IC->getArgOperand(1))->isOne();
+          Constant *C = nullptr;
+          if (V.isConstant())
+            C = V.getConstant();
+          else if (V.isNotConstant())
+            C = V.getNotConstant();
+          ConstantInt *CI = dyn_cast_or_null<ConstantInt>(C);
+          const APInt *NV = CI != nullptr ? &CI->getValue() : nullptr;
+
+          Optional<ValueLatticeElement> Res = None;
+
+          if (V.isUnknownOrUndef()) {
+            // No valid values
+            Res = V;
+          } else if (V.isOverdefined()) {
+            if (ZeroIsUndef) {
+              // It might be zero, the result is overdefined
+              Res = VLE::getOverdefined();
+            } else {
+              // From 0 to the bit width
+              Res = GetRange(0, OperandBitWidth + 1);
+            }
+          } else if (V.isConstant()) {
+            if (ZeroIsUndef && (CI == nullptr || CI->isZero())) {
+              // If we have an explicit zero (or we can't tell), the result is undefined
+              Res = VLE::getOverdefined();
+            } else if (NV != nullptr) {
+              // Zero is safe, and we have the constant, return the exact result
+              Res = VLE::get(ConstantInt::get(IC->getType(), NV->countLeadingZeros()));
+            } else {
+              // Zero is safe but the constant is not known, get the range of bits
+              Res = GetRange(0, OperandBitWidth + 1);
+            }
+          } else if (V.isNotConstant()) {
+            if (CI != nullptr && CI->isZero()) {
+              // We can explicitly exclude zero, valid results are from 0 to bit
+              // width minus one
+              Res = GetRange(0, OperandBitWidth);
+            } else if (ZeroIsUndef) {
+              // Zero is not safe, and we can't explicitly exclude it
+              Res = VLE::getOverdefined();
+            } else {
+              // Zero is safe, but we can't say much. We could say "not one" but
+              // we cannot express the disjoint range
+              Res = GetRange(0, OperandBitWidth + 1);
+            }
+          } else if (V.isConstantRange()) {
+            const ConstantRange &Range = V.getConstantRange();
+            if (ZeroIsUndef && Range.contains(GetAPInt(0))) {
+              // Zero is not safe and it's not excluded by the range
+              Res = VLE::getOverdefined();
+            } else if (Range.isWrappedSet() || Range.isFullSet()) {
+              // The range wraps, therefore it includes the two extreme
+              // encodings, all zeros and all ones. The only way we can express
+              // this [0, BitWidth + 1)
+              Res = GetRange(0, OperandBitWidth + 1);
+            } else {
+              // Zero is either safe or not in the range. The output range is
+              // composed by the result of countLeadingZero of the two extremes,
+              // sorted.
+              APInt Lower = GetAPInt(Range.getLower().countLeadingZeros());
+              APInt Last = Range.getUpper() - 1;
+              APInt Upper = GetAPInt(Last.countLeadingZeros());
+
+              if (Lower.eq(Upper)) {
+                Res = VLE::get(ConstantInt::get(IC->getType(), Lower));
+              } else {
+                if (Lower.ugt(Upper))
+                  std::swap(Lower, Upper);
+                ++Upper;
+                Res = VLE::getRange(ConstantRange(Lower, Upper));
+              }
+            }
+          }
+
+          return Res;
+        }
+      }
+    }
+
     if (BinaryOperator *BO = dyn_cast<BinaryOperator>(BBI))
       return solveBlockValueBinaryOp(BO, BB);
 
