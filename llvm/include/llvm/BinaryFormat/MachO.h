@@ -232,6 +232,7 @@ enum DataRegionType {
 };
 
 enum RebaseType {
+  REBASE_TYPE_INVALID = 0u,
   REBASE_TYPE_POINTER = 1u,
   REBASE_TYPE_TEXT_ABSOLUTE32 = 2u,
   REBASE_TYPE_TEXT_PCREL32 = 3u
@@ -252,6 +253,7 @@ enum RebaseOpcode {
 };
 
 enum BindType {
+  BIND_TYPE_INVALID = 0u,
   BIND_TYPE_POINTER = 1u,
   BIND_TYPE_TEXT_ABSOLUTE32 = 2u,
   BIND_TYPE_TEXT_PCREL32 = 3u
