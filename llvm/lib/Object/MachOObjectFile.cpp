@@ -3234,8 +3234,9 @@ void MachORebaseEntry::moveNext() {
       DEBUG_WITH_TYPE("mach-o-rebase", dbgs() << "REBASE_OPCODE_DONE\n");
       break;
     case MachO::REBASE_OPCODE_SET_TYPE_IMM:
-      RebaseType = ImmValue;
-      if (RebaseType > MachO::REBASE_TYPE_TEXT_PCREL32) {
+      RebaseType = static_cast<MachO::RebaseType>(ImmValue);
+      if (RebaseType <= MachO::REBASE_TYPE_INVALID
+          || RebaseType < MachO::REBASE_TYPE_POINTER) {
         *E = malformedError("for REBASE_OPCODE_SET_TYPE_IMM bad bind type: " +
                             Twine((int)RebaseType) + " for opcode at: 0x" +
                             Twine::utohexstr(OpcodeStart - Opcodes.begin()));
@@ -3464,8 +3465,12 @@ int32_t MachORebaseEntry::segmentIndex() const { return SegmentIndex; }
 
 uint64_t MachORebaseEntry::segmentOffset() const { return SegmentOffset; }
 
+MachO::RebaseType MachORebaseEntry::type() const { return RebaseType; }
+
 StringRef MachORebaseEntry::typeName() const {
   switch (RebaseType) {
+  case MachO::REBASE_TYPE_INVALID:
+    return "invalid";
   case MachO::REBASE_TYPE_POINTER:
     return "pointer";
   case MachO::REBASE_TYPE_TEXT_ABSOLUTE32:
@@ -3694,8 +3699,9 @@ void MachOBindEntry::moveNext() {
       }
       break;
     case MachO::BIND_OPCODE_SET_TYPE_IMM:
-      BindType = ImmValue;
-      if (ImmValue > MachO::BIND_TYPE_TEXT_PCREL32) {
+      BindType = static_cast<MachO::BindType>(ImmValue);
+      if (ImmValue <= MachO::BIND_TYPE_INVALID
+          || ImmValue > MachO::BIND_TYPE_TEXT_PCREL32) {
         *E = malformedError("for BIND_OPCODE_SET_TYPE_IMM bad bind type: " +
                             Twine((int)ImmValue) + " for opcode at: 0x" +
                             Twine::utohexstr(OpcodeStart - Opcodes.begin()));
@@ -4008,8 +4014,12 @@ int32_t MachOBindEntry::segmentIndex() const { return SegmentIndex; }
 
 uint64_t MachOBindEntry::segmentOffset() const { return SegmentOffset; }
 
+MachO::BindType MachOBindEntry::type() const { return BindType; }
+
 StringRef MachOBindEntry::typeName() const {
   switch (BindType) {
+  case MachO::BIND_TYPE_INVALID:
+    return "invalid";
   case MachO::BIND_TYPE_POINTER:
     return "pointer";
   case MachO::BIND_TYPE_TEXT_ABSOLUTE32:

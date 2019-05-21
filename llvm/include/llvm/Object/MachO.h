@@ -173,6 +173,7 @@ public:
   int32_t segmentIndex() const;
   uint64_t segmentOffset() const;
   StringRef typeName() const;
+  MachO::RebaseType type() const;
   StringRef segmentName() const;
   StringRef sectionName() const;
   uint64_t address() const;
@@ -196,7 +197,7 @@ private:
   int32_t SegmentIndex = -1;
   uint64_t RemainingLoopCount = 0;
   uint64_t AdvanceAmount = 0;
-  uint8_t  RebaseType = 0;
+  MachO::RebaseType  RebaseType = MachO::REBASE_TYPE_INVALID;
   uint8_t  PointerSize;
   bool     Done = false;
 };
@@ -219,6 +220,7 @@ public:
   int32_t segmentIndex() const;
   uint64_t segmentOffset() const;
   StringRef typeName() const;
+  MachO::BindType type() const;
   StringRef symbolName() const;
   uint32_t flags() const;
   int64_t addend() const;
@@ -253,7 +255,7 @@ private:
   int64_t  Addend = 0;
   uint64_t RemainingLoopCount = 0;
   uint64_t AdvanceAmount = 0;
-  uint8_t  BindType = 0;
+  MachO::BindType BindType = MachO::BIND_TYPE_INVALID;
   uint8_t  PointerSize;
   Kind     TableKind;
   bool     Done = false;
