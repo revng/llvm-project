@@ -1294,15 +1294,43 @@ static ValueLatticeElement getValueFromICmpCondition(Value *Val, ICmpInst *ICI,
   Value *RHS = ICI->getOperand(1);
   CmpInst::Predicate Predicate = ICI->getPredicate();
 
-  if (isa<Constant>(RHS)) {
-    if (ICI->isEquality() && LHS == Val) {
+  if (isa<Constant>(RHS) && ICI->isEquality()) {
+    bool Affirm = (isTrueDest == (Predicate == ICmpInst::ICMP_EQ));
+
+    if (LHS == Val) {
       // We know that V has the RHS constant if this is a true SETEQ or
       // false SETNE.
-      if (isTrueDest == (Predicate == ICmpInst::ICMP_EQ))
+      if (Affirm)
         return ValueLatticeElement::get(cast<Constant>(RHS));
       else
         return ValueLatticeElement::getNot(cast<Constant>(RHS));
     }
+
+    if (ConstantInt *CIRHS = dyn_cast<ConstantInt>(RHS)) {
+      ConstantInt *Mask;
+      if (match(LHS, m_And(m_Specific(Val), m_ConstantInt(Mask)))) {
+        const APInt &FixedBits = CIRHS->getValue();
+        APInt MaskValue = Mask->getValue();
+        MaskValue.flipAllBits();
+
+        if (MaskValue.isMask()) {
+          using VLE = ValueLatticeElement;
+          if ((MaskValue & FixedBits) == 0) {
+            if (Affirm)
+              return VLE::getRange({ FixedBits, FixedBits + MaskValue + 1 });
+            else
+              return VLE::getRange({ FixedBits + MaskValue + 1, FixedBits });
+          } else {
+            if (Affirm)
+              return VLE();
+            else
+              return VLE::getOverdefined();
+          }
+        }
+
+      }
+    }
+
   }
 
   if (!Val->getType()->isIntegerTy())
