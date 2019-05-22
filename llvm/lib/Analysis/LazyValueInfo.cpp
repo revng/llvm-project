@@ -737,7 +737,7 @@ bool LazyValueInfoImpl::solveBlockValueImpl(ValueLatticeElement &Res,
               } else {
                 if (Lower.ugt(Upper))
                   std::swap(Lower, Upper);
-                Upper++;
+                ++Upper;
                 Res = VLE::getRange(ConstantRange(Lower, Upper));
               }
 
@@ -749,8 +749,7 @@ bool LazyValueInfoImpl::solveBlockValueImpl(ValueLatticeElement &Res,
       }
     }
 
-    BinaryOperator *BO = dyn_cast<BinaryOperator>(BBI);
-    if (BO && isa<ConstantInt>(BO->getOperand(1)))
+    if (BinaryOperator *BO = dyn_cast<BinaryOperator>(BBI))
       return solveBlockValueBinaryOp(Res, BO, BB);
 
     if (auto *EVI = dyn_cast<ExtractValueInst>(BBI))
