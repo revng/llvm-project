@@ -1230,12 +1230,37 @@ static ValueLatticeElement getValueFromICmpCondition(Value *Val, ICmpInst *ICI,
   CmpInst::Predicate EdgePred =
       isTrueDest ? ICI->getPredicate() : ICI->getInversePredicate();
 
-  if (isa<Constant>(RHS)) {
-    if (ICI->isEquality() && LHS == Val) {
+  if (isa<Constant>(RHS) && ICI->isEquality()) {
+    if (LHS == Val) {
+      // We know that V has the RHS constant if the edge predicate is equality.
       if (EdgePred == ICmpInst::ICMP_EQ)
         return ValueLatticeElement::get(cast<Constant>(RHS));
       else if (!isa<UndefValue>(RHS))
         return ValueLatticeElement::getNot(cast<Constant>(RHS));
+    }
+
+    if (ConstantInt *CIRHS = dyn_cast<ConstantInt>(RHS)) {
+      ConstantInt *Mask;
+      if (match(LHS, m_And(m_Specific(Val), m_ConstantInt(Mask)))) {
+        const APInt &FixedBits = CIRHS->getValue();
+        APInt MaskValue = Mask->getValue();
+        MaskValue.flipAllBits();
+
+        if (MaskValue.isMask()) {
+          using VLE = ValueLatticeElement;
+          if ((MaskValue & FixedBits) == 0) {
+            if (EdgePred == ICmpInst::ICMP_EQ)
+              return VLE::getRange({FixedBits, FixedBits + MaskValue + 1});
+            else
+              return VLE::getRange({FixedBits + MaskValue + 1, FixedBits});
+          } else {
+            if (EdgePred == ICmpInst::ICMP_EQ)
+              return VLE();
+            else
+              return VLE::getOverdefined();
+          }
+        }
+      }
     }
   }
 
