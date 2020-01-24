@@ -108,7 +108,7 @@ class DWARFContext : public DIContext {
 public:
   DWARFContext(std::unique_ptr<const DWARFObject> DObj,
                std::string DWPName = "");
-  ~DWARFContext();
+  virtual ~DWARFContext();
 
   DWARFContext(DWARFContext &) = delete;
   DWARFContext &operator=(DWARFContext &) = delete;
