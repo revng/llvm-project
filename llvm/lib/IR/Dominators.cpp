@@ -63,43 +63,59 @@ bool BasicBlockEdge::isSingleEdge() const {
 //
 //===----------------------------------------------------------------------===//
 
-template class llvm::DomTreeNodeBase<BasicBlock>;
-template class llvm::DominatorTreeBase<BasicBlock, false>; // DomTreeBase
-template class llvm::DominatorTreeBase<BasicBlock, true>; // PostDomTreeBase
+
+namespace llvm {
+
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+class DominatorTreeOnView;
+
+template <typename NodeT, bool IsPostDom>
+using DominatorTreeBase = DominatorTreeOnView<NodeT, IsPostDom, DTIdentityView>;
+
+template <class NodeT, template<typename> class View>
+class DomTreeNodeOnView;
+
+template <class NodeT>
+using DomTreeNodeBase = DomTreeNodeOnView<NodeT, DTIdentityView>;
+
+template class DomTreeNodeOnView<BasicBlock, DTIdentityView>;
+template class DominatorTreeOnView<BasicBlock, false, DTIdentityView>; // DomTree
+template class DominatorTreeOnView<BasicBlock, true, DTIdentityView>; // PostDomTree
+} // end namespace
 
 template class llvm::cfg::Update<BasicBlock *>;
 
-template void llvm::DomTreeBuilder::Calculate<DomTreeBuilder::BBDomTree>(
+template void llvm::DomTreeBuilder::Calculate<BasicBlock, false, DTIdentityView>(
     DomTreeBuilder::BBDomTree &DT);
 template void
-llvm::DomTreeBuilder::CalculateWithUpdates<DomTreeBuilder::BBDomTree>(
+llvm::DomTreeBuilder::CalculateWithUpdates<BasicBlock, false, DTIdentityView>(
     DomTreeBuilder::BBDomTree &DT, BBUpdates U);
 
-template void llvm::DomTreeBuilder::Calculate<DomTreeBuilder::BBPostDomTree>(
+template void llvm::DomTreeBuilder::Calculate<BasicBlock, true, DTIdentityView>(
     DomTreeBuilder::BBPostDomTree &DT);
 // No CalculateWithUpdates<PostDomTree> instantiation, unless a usecase arises.
 
-template void llvm::DomTreeBuilder::InsertEdge<DomTreeBuilder::BBDomTree>(
+template void llvm::DomTreeBuilder::InsertEdge<BasicBlock, false, DTIdentityView>(
     DomTreeBuilder::BBDomTree &DT, BasicBlock *From, BasicBlock *To);
-template void llvm::DomTreeBuilder::InsertEdge<DomTreeBuilder::BBPostDomTree>(
+template void llvm::DomTreeBuilder::InsertEdge<BasicBlock, true, DTIdentityView>(
     DomTreeBuilder::BBPostDomTree &DT, BasicBlock *From, BasicBlock *To);
 
-template void llvm::DomTreeBuilder::DeleteEdge<DomTreeBuilder::BBDomTree>(
+template void llvm::DomTreeBuilder::DeleteEdge<BasicBlock, false, DTIdentityView>(
     DomTreeBuilder::BBDomTree &DT, BasicBlock *From, BasicBlock *To);
-template void llvm::DomTreeBuilder::DeleteEdge<DomTreeBuilder::BBPostDomTree>(
+template void llvm::DomTreeBuilder::DeleteEdge<BasicBlock, true, DTIdentityView>(
     DomTreeBuilder::BBPostDomTree &DT, BasicBlock *From, BasicBlock *To);
 
-template void llvm::DomTreeBuilder::ApplyUpdates<DomTreeBuilder::BBDomTree>(
-    DomTreeBuilder::BBDomTree &DT, DomTreeBuilder::BBDomTreeGraphDiff &,
-    DomTreeBuilder::BBDomTreeGraphDiff *);
-template void llvm::DomTreeBuilder::ApplyUpdates<DomTreeBuilder::BBPostDomTree>(
-    DomTreeBuilder::BBPostDomTree &DT, DomTreeBuilder::BBPostDomTreeGraphDiff &,
-    DomTreeBuilder::BBPostDomTreeGraphDiff *);
+template void
+llvm::DomTreeBuilder::ApplyUpdates<BasicBlock, false, DTIdentityView>(
+    BBDomTree &DT, BBDomTreeGraphDiff &, BBDomTreeGraphDiff *);
+template void
+llvm::DomTreeBuilder::ApplyUpdates<BasicBlock, true, DTIdentityView>(
+    BBPostDomTree &DT, BBPostDomTreeGraphDiff &, BBPostDomTreeGraphDiff *);
 
-template bool llvm::DomTreeBuilder::Verify<DomTreeBuilder::BBDomTree>(
+template bool llvm::DomTreeBuilder::Verify<BasicBlock, false, DTIdentityView>(
     const DomTreeBuilder::BBDomTree &DT,
     DomTreeBuilder::BBDomTree::VerificationLevel VL);
-template bool llvm::DomTreeBuilder::Verify<DomTreeBuilder::BBPostDomTree>(
+template bool llvm::DomTreeBuilder::Verify<BasicBlock, true, DTIdentityView>(
     const DomTreeBuilder::BBPostDomTree &DT,
     DomTreeBuilder::BBPostDomTree::VerificationLevel VL);
 
