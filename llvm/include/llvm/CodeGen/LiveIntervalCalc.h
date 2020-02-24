@@ -21,7 +21,14 @@
 
 namespace llvm {
 
-template <class NodeT> class DomTreeNodeBase;
+template<typename X>
+using DTIdentityView = X;
+
+template <typename NodeT, template<typename> class View>
+class DomTreeNodeOnView;
+
+template <typename NodeT>
+using DomTreeNodeBase = DomTreeNodeOnView<NodeT, DTIdentityView>;
 
 using MachineDomTreeNode = DomTreeNodeBase<MachineBasicBlock>;
 
