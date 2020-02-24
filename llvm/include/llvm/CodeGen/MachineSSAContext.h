@@ -16,6 +16,7 @@
 #define LLVM_CODEGEN_MACHINESSACONTEXT_H
 
 #include "llvm/CodeGen/MachineBasicBlock.h"
+#include "llvm/Support/GenericDomTree.h"
 #include "llvm/Support/Printable.h"
 
 namespace llvm {
@@ -24,7 +25,6 @@ class MachineInstr;
 class MachineFunction;
 class Register;
 template <typename _FunctionT> class GenericSSAContext;
-template <typename, bool> class DominatorTreeBase;
 
 inline auto successors(const MachineBasicBlock *BB) { return BB->successors(); }
 inline auto predecessors(const MachineBasicBlock *BB) {
