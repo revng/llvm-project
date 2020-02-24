@@ -63,7 +63,16 @@ class MemorySSAUpdater;
 class PHINode;
 class ScalarEvolution;
 class raw_ostream;
-template <class N, bool IsPostDom> class DominatorTreeBase;
+
+template<typename X>
+using DTIdentityView = X;
+
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+class DominatorTreeOnView;
+
+template <typename NodeT, bool IsPostDom>
+using DominatorTreeBase = DominatorTreeOnView<NodeT, IsPostDom, DTIdentityView>;
+
 template <class N, class M> class LoopInfoBase;
 template <class N, class M> class LoopBase;
 

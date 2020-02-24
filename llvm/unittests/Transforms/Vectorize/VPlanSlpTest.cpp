@@ -13,6 +13,21 @@
 #include "gtest/gtest.h"
 
 namespace llvm {
+
+class BasicBlock;
+
+template<typename X>
+using DTIdentity = X;
+
+template <typename NodeT, bool IsPostDom, template<typename> class View> class DominatorTreeOnView;
+
+namespace DomTreeBuilder {
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void Calculate(DominatorTreeOnView<NodeT, IsPostDom, View> &DT);
+
+extern template void Calculate<BasicBlock, false, DTIdentity>(DominatorTreeOnView<BasicBlock, false, DTIdentity> &DT);
+} // end namespace DomTreeBuilder
+
 namespace {
 
 class VPlanSlpTest : public VPlanTestBase {

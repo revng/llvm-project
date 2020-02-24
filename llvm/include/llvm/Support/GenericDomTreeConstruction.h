@@ -49,13 +49,13 @@
 namespace llvm {
 namespace DomTreeBuilder {
 
-template <typename DomTreeT>
-struct SemiNCAInfo {
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+struct SemiNCAInfoOnView {
+  using DomTreeT = DominatorTreeOnView<NodeT, IsPostDom, View>;
   using NodePtr = typename DomTreeT::NodePtr;
-  using NodeT = typename DomTreeT::NodeType;
-  using TreeNodePtr = DomTreeNodeBase<NodeT> *;
+  using TreeNode = DomTreeNodeOnView<NodeT, View>;
+  using TreeNodePtr = TreeNode*;
   using RootsT = decltype(DomTreeT::Roots);
-  static constexpr bool IsPostDom = DomTreeT::IsPostDominator;
 
   // Information record used by Semi-NCA during tree construction.
   struct InfoRec {
@@ -96,7 +96,7 @@ struct SemiNCAInfo {
   using BatchUpdatePtr = BatchUpdateInfo *;
 
   // If BUI is a nullptr, then there's no batch update in progress.
-  SemiNCAInfo(BatchUpdatePtr BUI) : BatchUpdates(BUI) {}
+  SemiNCAInfoOnView(BatchUpdatePtr BUI) : BatchUpdates(BUI) {}
 
   void clear() {
     NumToNode = {nullptr}; // Restore to initial state with a dummy start node.
@@ -110,12 +110,12 @@ struct SemiNCAInfo {
     using ResultTy = SmallVector<NodePtr, 8>;
 
     static ResultTy Get(NodePtr N, std::integral_constant<bool, false>) {
-      auto RChildren = reverse(children<NodePtr>(N));
+      auto RChildren = reverse(children<View<NodePtr>>(N));
       return ResultTy(RChildren.begin(), RChildren.end());
     }
 
     static ResultTy Get(NodePtr N, std::integral_constant<bool, true>) {
-      auto IChildren = inverse_children<NodePtr>(N);
+      auto IChildren = inverse_children<View<NodePtr>>(N);
       return ResultTy(IChildren.begin(), IChildren.end());
     }
 
@@ -186,7 +186,7 @@ struct SemiNCAInfo {
     // Add a new tree node for this NodeT, and link it as a child of
     // IDomNode
     return (DT.DomTreeNodes[BB] = IDomNode->addChild(
-        std::make_unique<DomTreeNodeBase<NodeT>>(BB, IDomNode)))
+        std::make_unique<TreeNode>(BB, IDomNode)))
         .get();
   }
 
@@ -390,7 +390,7 @@ struct SemiNCAInfo {
       return Roots;
     }
 
-    SemiNCAInfo SNCA(BUI);
+    SemiNCAInfoOnView SNCA(BUI);
 
     // PostDominatorTree always has a virtual root.
     SNCA.addVirtualRoot();
@@ -512,7 +512,7 @@ struct SemiNCAInfo {
     assert(IsPostDom && "This function is for postdominators only");
     LLVM_DEBUG(dbgs() << "Removing redundant roots\n");
 
-    SemiNCAInfo SNCA(BUI);
+    SemiNCAInfoOnView SNCA(BUI);
 
     for (unsigned i = 0; i < Roots.size(); ++i) {
       auto &Root = Roots[i];
@@ -563,7 +563,7 @@ struct SemiNCAInfo {
     auto *Parent = DT.Parent;
     DT.reset();
     DT.Parent = Parent;
-    SemiNCAInfo SNCA(nullptr);  // Since we are rebuilding the whole tree,
+    SemiNCAInfoOnView SNCA(nullptr);  // Since we are rebuilding the whole tree,
                                 // there's no point doing it incrementally.
 
     // Step #0: Number blocks in depth-first order and initialize variables used
@@ -586,7 +586,7 @@ struct SemiNCAInfo {
     NodePtr Root = IsPostDom ? nullptr : DT.Roots[0];
 
     DT.RootNode = (DT.DomTreeNodes[Root] =
-                       std::make_unique<DomTreeNodeBase<NodeT>>(Root, nullptr))
+                       std::make_unique<TreeNode>(Root, nullptr))
         .get();
     SNCA.attachNewSubtree(DT, DT.RootNode);
   }
@@ -611,7 +611,7 @@ struct SemiNCAInfo {
       // Add a new tree node for this BasicBlock, and link it as a child of
       // IDomNode.
       DT.DomTreeNodes[W] = IDomNode->addChild(
-          std::make_unique<DomTreeNodeBase<NodeT>>(W, IDomNode));
+          std::make_unique<TreeNode>(W, IDomNode));
     }
   }
 
@@ -663,7 +663,7 @@ struct SemiNCAInfo {
       TreeNodePtr VirtualRoot = DT.getNode(nullptr);
       FromTN =
           (DT.DomTreeNodes[From] = VirtualRoot->addChild(
-               std::make_unique<DomTreeNodeBase<NodeT>>(From, VirtualRoot)))
+               std::make_unique<TreeNode>(From, VirtualRoot)))
               .get();
       DT.Roots.push_back(From);
     }
@@ -907,7 +907,7 @@ struct SemiNCAInfo {
       return false;
     };
 
-    SemiNCAInfo SNCA(BUI);
+    SemiNCAInfoOnView SNCA(BUI);
     SNCA.runDFS(Root, 0, UnreachableDescender, 0);
     SNCA.runSemiNCA(DT);
     SNCA.attachNewSubtree(DT, Incoming);
@@ -1000,7 +1000,7 @@ struct SemiNCAInfo {
     LLVM_DEBUG(dbgs() << "\tTop of subtree: " << BlockNamePrinter(ToIDomTN)
                       << "\n");
 
-    SemiNCAInfo SNCA(BUI);
+    SemiNCAInfoOnView SNCA(BUI);
     SNCA.runDFS(ToIDom, 0, DescendBelow, 0);
     LLVM_DEBUG(dbgs() << "\tRunning Semi-NCA\n");
     SNCA.runSemiNCA(DT, Level);
@@ -1068,7 +1068,7 @@ struct SemiNCAInfo {
       return false;
     };
 
-    SemiNCAInfo SNCA(BUI);
+    SemiNCAInfoOnView SNCA(BUI);
     unsigned LastDFSNum =
         SNCA.runDFS(ToTN->getBlock(), 0, DescendAndCollect, 0);
 
@@ -1595,19 +1595,19 @@ struct SemiNCAInfo {
   }
 };
 
-template <class DomTreeT>
-void Calculate(DomTreeT &DT) {
-  SemiNCAInfo<DomTreeT>::CalculateFromScratch(DT, nullptr);
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void Calculate(DominatorTreeOnView<NodeT, IsPostDom, View> &DT) {
+  SemiNCAInfoOnView<NodeT, IsPostDom, View>::CalculateFromScratch(DT, nullptr);
 }
 
-template <typename DomTreeT>
-void CalculateWithUpdates(DomTreeT &DT,
-                          ArrayRef<typename DomTreeT::UpdateType> Updates) {
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void CalculateWithUpdates(DominatorTreeOnView<NodeT, IsPostDom, View> &DT,
+                          ArrayRef<typename DominatorTreeOnView<NodeT, IsPostDom, View>::UpdateType> Updates) {
   // TODO: Move BUI creation in common method, reuse in ApplyUpdates.
-  typename SemiNCAInfo<DomTreeT>::BatchUpdateInfo BUI;
+  typename SemiNCAInfoOnView<NodeT, IsPostDom, View>::BatchUpdateInfo BUI;
   LLVM_DEBUG(dbgs() << "Legalizing " << BUI.Updates.size() << " updates\n");
-  cfg::LegalizeUpdates<typename DomTreeT::NodePtr>(Updates, BUI.Updates,
-                                                   DomTreeT::IsPostDominator);
+  cfg::LegalizeUpdates<typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr>(Updates, BUI.Updates,
+                                                   DominatorTreeOnView<NodeT, IsPostDom, View>::IsPostDominator);
   const size_t NumLegalized = BUI.Updates.size();
   BUI.FutureSuccessors.reserve(NumLegalized);
   BUI.FuturePredecessors.reserve(NumLegalized);
@@ -1616,32 +1616,32 @@ void CalculateWithUpdates(DomTreeT &DT,
     BUI.FuturePredecessors[U.getTo()].push_back({U.getFrom(), U.getKind()});
   }
 
-  SemiNCAInfo<DomTreeT>::CalculateFromScratch(DT, &BUI);
+  SemiNCAInfoOnView<NodeT, IsPostDom, View>::CalculateFromScratch(DT, &BUI);
 }
 
-template <class DomTreeT>
-void InsertEdge(DomTreeT &DT, typename DomTreeT::NodePtr From,
-                typename DomTreeT::NodePtr To) {
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void InsertEdge(DominatorTreeOnView<NodeT, IsPostDom, View> &DT, typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr From,
+                typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr To) {
   if (DT.isPostDominator()) std::swap(From, To);
-  SemiNCAInfo<DomTreeT>::InsertEdge(DT, nullptr, From, To);
+  SemiNCAInfoOnView<NodeT, IsPostDom, View>::InsertEdge(DT, nullptr, From, To);
 }
 
-template <class DomTreeT>
-void DeleteEdge(DomTreeT &DT, typename DomTreeT::NodePtr From,
-                typename DomTreeT::NodePtr To) {
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void DeleteEdge(DominatorTreeOnView<NodeT, IsPostDom, View> &DT, typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr From,
+                typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr To) {
   if (DT.isPostDominator()) std::swap(From, To);
-  SemiNCAInfo<DomTreeT>::DeleteEdge(DT, nullptr, From, To);
+  SemiNCAInfoOnView<NodeT, IsPostDom, View>::DeleteEdge(DT, nullptr, From, To);
 }
 
-template <class DomTreeT>
-void ApplyUpdates(DomTreeT &DT,
-                  ArrayRef<typename DomTreeT::UpdateType> Updates) {
-  SemiNCAInfo<DomTreeT>::ApplyUpdates(DT, Updates);
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void ApplyUpdates(DominatorTreeOnView<NodeT, IsPostDom, View> &DT,
+                  ArrayRef<typename DominatorTreeOnView<NodeT, IsPostDom, View>::UpdateType> Updates) {
+  SemiNCAInfoOnView<NodeT, IsPostDom, View>::ApplyUpdates(DT, Updates);
 }
 
-template <class DomTreeT>
-bool Verify(const DomTreeT &DT, typename DomTreeT::VerificationLevel VL) {
-  SemiNCAInfo<DomTreeT> SNCA(nullptr);
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+bool Verify(const DominatorTreeOnView<NodeT, IsPostDom, View> &DT, typename DominatorTreeOnView<NodeT, IsPostDom, View>::VerificationLevel VL) {
+  SemiNCAInfoOnView<NodeT, IsPostDom, View> SNCA(nullptr);
 
   // Simplist check is to compare against a new tree. This will also
   // usefully print the old and new trees, if they are different.
@@ -1654,11 +1654,11 @@ bool Verify(const DomTreeT &DT, typename DomTreeT::VerificationLevel VL) {
     return false;
 
   // Extra checks depending on VerificationLevel. Up to O(N^3)
-  if (VL == DomTreeT::VerificationLevel::Basic ||
-      VL == DomTreeT::VerificationLevel::Full)
+  if (VL == DominatorTreeOnView<NodeT, IsPostDom, View>::VerificationLevel::Basic ||
+      VL == DominatorTreeOnView<NodeT, IsPostDom, View>::VerificationLevel::Full)
     if (!SNCA.verifyParentProperty(DT))
       return false;
-  if (VL == DomTreeT::VerificationLevel::Full)
+  if (VL == DominatorTreeOnView<NodeT, IsPostDom, View>::VerificationLevel::Full)
     if (!SNCA.verifySiblingProperty(DT))
       return false;
 

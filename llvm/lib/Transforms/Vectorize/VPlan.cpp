@@ -749,7 +749,7 @@ void VPWidenMemoryInstructionRecipe::print(raw_ostream &O,
   O << "\\l\"";
 }
 
-template void DomTreeBuilder::Calculate<VPDominatorTree>(VPDominatorTree &DT);
+template void DomTreeBuilder::Calculate<VPBlockBase, false, DTIdentityView>(VPDominatorTree &DT);
 
 void VPValue::replaceAllUsesWith(VPValue *New) {
   for (VPUser *User : users())
