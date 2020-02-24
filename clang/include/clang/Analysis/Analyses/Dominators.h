@@ -285,8 +285,7 @@ namespace llvm {
 namespace DomTreeBuilder {
 
 using ClangCFGDomChildrenGetter =
-SemiNCAInfo<clang::CFGDomTree::DominatorTreeBase>::ChildrenGetter<
-                                                             /*Inverse=*/false>;
+SemiNCAInfoOnView<clang::CFGBlock, false, DTIdentityView>::ChildrenGetter</*Inverse=*/false>;
 
 template <>
 template <>
@@ -299,8 +298,7 @@ inline ClangCFGDomChildrenGetter::ResultTy ClangCFGDomChildrenGetter::Get(
 }
 
 using ClangCFGDomReverseChildrenGetter =
-SemiNCAInfo<clang::CFGDomTree::DominatorTreeBase>::ChildrenGetter<
-                                                              /*Inverse=*/true>;
+SemiNCAInfoOnView<clang::CFGBlock, false, DTIdentityView>::ChildrenGetter</*Inverse=*/true>;
 
 template <>
 template <>
@@ -314,8 +312,7 @@ ClangCFGDomReverseChildrenGetter::Get(
 }
 
 using ClangCFGPostDomChildrenGetter =
-SemiNCAInfo<clang::CFGPostDomTree::DominatorTreeBase>::ChildrenGetter<
-                                                             /*Inverse=*/false>;
+SemiNCAInfoOnView<clang::CFGBlock, true, DTIdentityView>::ChildrenGetter</*Inverse=*/false>;
 
 template <>
 template <>
@@ -329,8 +326,7 @@ ClangCFGPostDomChildrenGetter::Get(
 }
 
 using ClangCFGPostDomReverseChildrenGetter =
-SemiNCAInfo<clang::CFGPostDomTree::DominatorTreeBase>::ChildrenGetter<
-                                                              /*Inverse=*/true>;
+SemiNCAInfoOnView<clang::CFGBlock, true, DTIdentityView>::ChildrenGetter</*Inverse=*/true>;
 
 template <>
 template <>
