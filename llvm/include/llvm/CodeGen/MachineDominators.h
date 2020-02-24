@@ -32,9 +32,9 @@ inline void DominatorTreeBase<MachineBasicBlock, false>::addRoot(
   this->Roots.push_back(MBB);
 }
 
-extern template class DomTreeNodeBase<MachineBasicBlock>;
-extern template class DominatorTreeBase<MachineBasicBlock, false>; // DomTree
-extern template class DominatorTreeBase<MachineBasicBlock, true>; // PostDomTree
+extern template class DomTreeNodeOnView<MachineBasicBlock, DTIdentityView>;
+extern template class DominatorTreeOnView<MachineBasicBlock, false, DTIdentityView>; // DomTree
+extern template class DominatorTreeOnView<MachineBasicBlock, true, DTIdentityView>; // PostDomTree
 
 using MachineDomTree = DomTreeBase<MachineBasicBlock>;
 using MachineDomTreeNode = DomTreeNodeBase<MachineBasicBlock>;

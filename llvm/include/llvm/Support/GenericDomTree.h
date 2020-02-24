@@ -41,44 +41,51 @@
 
 namespace llvm {
 
+template<typename X>
+using DTIdentityView = X;
+
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+class DominatorTreeOnView;
+
 template <typename NodeT, bool IsPostDom>
-class DominatorTreeBase;
+using DominatorTreeBase = DominatorTreeOnView<NodeT, IsPostDom, DTIdentityView>;
 
 namespace DomTreeBuilder {
-template <typename DomTreeT>
-struct SemiNCAInfo;
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+struct SemiNCAInfoOnView;
 }  // namespace DomTreeBuilder
 
 /// Base class for the actual dominator tree node.
-template <class NodeT> class DomTreeNodeBase {
+template <class NodeT, template<typename> class View>
+class DomTreeNodeOnView {
   friend class PostDominatorTree;
-  friend class DominatorTreeBase<NodeT, false>;
-  friend class DominatorTreeBase<NodeT, true>;
-  friend struct DomTreeBuilder::SemiNCAInfo<DominatorTreeBase<NodeT, false>>;
-  friend struct DomTreeBuilder::SemiNCAInfo<DominatorTreeBase<NodeT, true>>;
+  friend class DominatorTreeOnView<NodeT, false, View>;
+  friend class DominatorTreeOnView<NodeT, true, View>;
+  friend struct DomTreeBuilder::SemiNCAInfoOnView<NodeT, false, View>;
+  friend struct DomTreeBuilder::SemiNCAInfoOnView<NodeT, true, View>;
 
   NodeT *TheBB;
-  DomTreeNodeBase *IDom;
+  DomTreeNodeOnView *IDom;
   unsigned Level;
-  SmallVector<DomTreeNodeBase *, 4> Children;
+  SmallVector<DomTreeNodeOnView *, 4> Children;
   mutable unsigned DFSNumIn = ~0;
   mutable unsigned DFSNumOut = ~0;
 
  public:
-  DomTreeNodeBase(NodeT *BB, DomTreeNodeBase *iDom)
+  DomTreeNodeOnView(NodeT *BB, DomTreeNodeOnView *iDom)
       : TheBB(BB), IDom(iDom), Level(IDom ? IDom->Level + 1 : 0) {}
 
-  using iterator = typename SmallVector<DomTreeNodeBase *, 4>::iterator;
+  using iterator = typename SmallVector<DomTreeNodeOnView *, 4>::iterator;
   using const_iterator =
-      typename SmallVector<DomTreeNodeBase *, 4>::const_iterator;
+      typename SmallVector<DomTreeNodeOnView *, 4>::const_iterator;
 
   iterator begin() { return Children.begin(); }
   iterator end() { return Children.end(); }
   const_iterator begin() const { return Children.begin(); }
   const_iterator end() const { return Children.end(); }
 
-  DomTreeNodeBase *const &back() const { return Children.back(); }
-  DomTreeNodeBase *&back() { return Children.back(); }
+  DomTreeNodeOnView *const &back() const { return Children.back(); }
+  DomTreeNodeOnView *&back() { return Children.back(); }
 
   iterator_range<iterator> children() { return make_range(begin(), end()); }
   iterator_range<const_iterator> children() const {
@@ -86,11 +93,11 @@ template <class NodeT> class DomTreeNodeBase {
   }
 
   NodeT *getBlock() const { return TheBB; }
-  DomTreeNodeBase *getIDom() const { return IDom; }
+  DomTreeNodeOnView *getIDom() const { return IDom; }
   unsigned getLevel() const { return Level; }
 
-  std::unique_ptr<DomTreeNodeBase> addChild(
-      std::unique_ptr<DomTreeNodeBase> C) {
+  std::unique_ptr<DomTreeNodeOnView> addChild(
+      std::unique_ptr<DomTreeNodeOnView> C) {
     Children.push_back(C.get());
     return C;
   }
@@ -100,19 +107,19 @@ template <class NodeT> class DomTreeNodeBase {
 
   void clearAllChildren() { Children.clear(); }
 
-  bool compare(const DomTreeNodeBase *Other) const {
+  bool compare(const DomTreeNodeOnView *Other) const {
     if (getNumChildren() != Other->getNumChildren())
       return true;
 
     if (Level != Other->Level) return true;
 
     SmallPtrSet<const NodeT *, 4> OtherChildren;
-    for (const DomTreeNodeBase *I : *Other) {
+    for (const DomTreeNodeOnView *I : *Other) {
       const NodeT *Nd = I->getBlock();
       OtherChildren.insert(Nd);
     }
 
-    for (const DomTreeNodeBase *I : *this) {
+    for (const DomTreeNodeOnView *I : *this) {
       const NodeT *N = I->getBlock();
       if (OtherChildren.count(N) == 0)
         return true;
@@ -120,7 +127,7 @@ template <class NodeT> class DomTreeNodeBase {
     return false;
   }
 
-  void setIDom(DomTreeNodeBase *NewIDom) {
+  void setIDom(DomTreeNodeOnView *NewIDom) {
     assert(IDom && "No immediate dominator?");
     if (IDom == NewIDom) return;
 
@@ -146,7 +153,7 @@ template <class NodeT> class DomTreeNodeBase {
 private:
   // Return true if this node is dominated by other. Use this only if DFS info
   // is valid.
-  bool DominatedBy(const DomTreeNodeBase *other) const {
+  bool DominatedBy(const DomTreeNodeOnView *other) const {
     return this->DFSNumIn >= other->DFSNumIn &&
            this->DFSNumOut <= other->DFSNumOut;
   }
@@ -155,13 +162,13 @@ private:
     assert(IDom);
     if (Level == IDom->Level + 1) return;
 
-    SmallVector<DomTreeNodeBase *, 64> WorkStack = {this};
+    SmallVector<DomTreeNodeOnView *, 64> WorkStack = {this};
 
     while (!WorkStack.empty()) {
-      DomTreeNodeBase *Current = WorkStack.pop_back_val();
+      DomTreeNodeOnView *Current = WorkStack.pop_back_val();
       Current->Level = Current->IDom->Level + 1;
 
-      for (DomTreeNodeBase *C : *Current) {
+      for (DomTreeNodeOnView *C : *Current) {
         assert(C->IDom);
         if (C->Level != C->IDom->Level + 1) WorkStack.push_back(C);
       }
@@ -170,7 +177,10 @@ private:
 };
 
 template <class NodeT>
-raw_ostream &operator<<(raw_ostream &O, const DomTreeNodeBase<NodeT> *Node) {
+using DomTreeNodeBase = DomTreeNodeOnView<NodeT, DTIdentityView>;
+
+template <class NodeT, template<typename> class View>
+raw_ostream &operator<<(raw_ostream &O, const DomTreeNodeOnView<NodeT, View> *Node) {
   if (Node->getBlock())
     Node->getBlock()->printAsOperand(O, false);
   else
@@ -182,11 +192,11 @@ raw_ostream &operator<<(raw_ostream &O, const DomTreeNodeBase<NodeT> *Node) {
   return O;
 }
 
-template <class NodeT>
-void PrintDomTree(const DomTreeNodeBase<NodeT> *N, raw_ostream &O,
+template <class NodeT, template<typename> class View>
+void PrintDomTree(const DomTreeNodeOnView<NodeT, View> *N, raw_ostream &O,
                   unsigned Lev) {
   O.indent(2 * Lev) << "[" << Lev << "] " << N;
-  for (typename DomTreeNodeBase<NodeT>::const_iterator I = N->begin(),
+  for (typename DomTreeNodeOnView<NodeT, View>::const_iterator I = N->begin(),
                                                        E = N->end();
        I != E; ++I)
     PrintDomTree<NodeT>(*I, O, Lev + 1);
@@ -194,41 +204,42 @@ void PrintDomTree(const DomTreeNodeBase<NodeT> *N, raw_ostream &O,
 
 namespace DomTreeBuilder {
 // The routines below are provided in a separate header but referenced here.
-template <typename DomTreeT>
-void Calculate(DomTreeT &DT);
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void Calculate(DominatorTreeOnView<NodeT, IsPostDom, View> &DT);
 
-template <typename DomTreeT>
-void CalculateWithUpdates(DomTreeT &DT,
-                          ArrayRef<typename DomTreeT::UpdateType> Updates);
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void CalculateWithUpdates(DominatorTreeOnView<NodeT, IsPostDom, View> &DT,
+                          ArrayRef<typename DominatorTreeOnView<NodeT, IsPostDom, View>::UpdateType> Updates);
 
-template <typename DomTreeT>
-void InsertEdge(DomTreeT &DT, typename DomTreeT::NodePtr From,
-                typename DomTreeT::NodePtr To);
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void InsertEdge(DominatorTreeOnView<NodeT, IsPostDom, View> &DT,
+                typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr From,
+                typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr To);
 
-template <typename DomTreeT>
-void DeleteEdge(DomTreeT &DT, typename DomTreeT::NodePtr From,
-                typename DomTreeT::NodePtr To);
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void DeleteEdge(DominatorTreeOnView<NodeT, IsPostDom, View> &DT,
+                typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr From,
+                typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr To);
 
-template <typename DomTreeT>
-void ApplyUpdates(DomTreeT &DT,
-                  GraphDiff<typename DomTreeT::NodePtr,
-                            DomTreeT::IsPostDominator> &PreViewCFG,
-                  GraphDiff<typename DomTreeT::NodePtr,
-                            DomTreeT::IsPostDominator> *PostViewCFG);
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void ApplyUpdates(DominatorTreeOnView<NodeT, IsPostDom, View> &DT,
+                  GraphDiff<typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr, IsPostDom> &PreViewCFG,
+                  GraphDiff<typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr, IsPostDom> *PostViewCFG);
 
-template <typename DomTreeT>
-bool Verify(const DomTreeT &DT, typename DomTreeT::VerificationLevel VL);
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+bool Verify(const DominatorTreeOnView<NodeT, IsPostDom, View> &DT,
+            typename DominatorTreeOnView<NodeT, IsPostDom, View>::VerificationLevel VL);
 }  // namespace DomTreeBuilder
 
 /// Core dominator tree base class.
 ///
 /// This class is a generic template over graph nodes. It is instantiated for
 /// various graphs in the LLVM IR or in the code generator.
-template <typename NodeT, bool IsPostDom>
-class DominatorTreeBase {
+template <typename NodeT, bool IsPostDom, template<typename X> class View>
+class DominatorTreeOnView {
  public:
   static_assert(std::is_pointer<typename GraphTraits<NodeT *>::NodeRef>::value,
-                "Currently DominatorTreeBase supports only pointer nodes");
+                "Currently DominatorTreeOnView supports only pointer nodes");
   using NodeType = NodeT;
   using NodePtr = NodeT *;
   using ParentPtr = decltype(std::declval<NodeT *>()->getParent());
@@ -249,20 +260,21 @@ protected:
   SmallVector<NodeT *, IsPostDom ? 4 : 1> Roots;
 
   using DomTreeNodeMapType =
-     DenseMap<NodeT *, std::unique_ptr<DomTreeNodeBase<NodeT>>>;
+     DenseMap<NodeT *, std::unique_ptr<DomTreeNodeOnView<NodeT, View>>>;
   DomTreeNodeMapType DomTreeNodes;
-  DomTreeNodeBase<NodeT> *RootNode = nullptr;
+  DomTreeNodeOnView<NodeT, View> *RootNode = nullptr;
   ParentPtr Parent = nullptr;
 
   mutable bool DFSInfoValid = false;
   mutable unsigned int SlowQueries = 0;
 
-  friend struct DomTreeBuilder::SemiNCAInfo<DominatorTreeBase>;
+  friend struct DomTreeBuilder::SemiNCAInfoOnView<NodeT, true, View>;
+  friend struct DomTreeBuilder::SemiNCAInfoOnView<NodeT, false, View>;
 
  public:
-  DominatorTreeBase() = default;
+  DominatorTreeOnView() = default;
 
-  DominatorTreeBase(DominatorTreeBase &&Arg)
+  DominatorTreeOnView(DominatorTreeOnView &&Arg)
       : Roots(std::move(Arg.Roots)),
         DomTreeNodes(std::move(Arg.DomTreeNodes)),
         RootNode(Arg.RootNode),
@@ -272,7 +284,7 @@ protected:
     Arg.wipe();
   }
 
-  DominatorTreeBase &operator=(DominatorTreeBase &&RHS) {
+  DominatorTreeOnView &operator=(DominatorTreeOnView &&RHS) {
     Roots = std::move(RHS.Roots);
     DomTreeNodes = std::move(RHS.DomTreeNodes);
     RootNode = RHS.RootNode;
@@ -283,8 +295,8 @@ protected:
     return *this;
   }
 
-  DominatorTreeBase(const DominatorTreeBase &) = delete;
-  DominatorTreeBase &operator=(const DominatorTreeBase &) = delete;
+  DominatorTreeOnView(const DominatorTreeOnView &) = delete;
+  DominatorTreeOnView &operator=(const DominatorTreeOnView &) = delete;
 
   /// Iteration over roots.
   ///
@@ -314,7 +326,7 @@ protected:
 
   /// compare - Return false if the other dominator tree base matches this
   /// dominator tree base. Otherwise return true.
-  bool compare(const DominatorTreeBase &Other) const {
+  bool compare(const DominatorTreeOnView &Other) const {
     if (Parent != Other.Parent) return true;
 
     if (Roots.size() != Other.Roots.size())
@@ -334,8 +346,8 @@ protected:
       if (OI == OtherDomTreeNodes.end())
         return true;
 
-      DomTreeNodeBase<NodeT> &MyNd = *DomTreeNode.second;
-      DomTreeNodeBase<NodeT> &OtherNd = *OI->second;
+      DomTreeNodeOnView<NodeT, View> &MyNd = *DomTreeNode.second;
+      DomTreeNodeOnView<NodeT, View> &OtherNd = *OI->second;
 
       if (MyNd.compare(&OtherNd))
         return true;
@@ -348,7 +360,7 @@ protected:
   /// block.  This is the same as using operator[] on this class.  The result
   /// may (but is not required to) be null for a forward (backwards)
   /// statically unreachable block.
-  DomTreeNodeBase<NodeT> *getNode(const NodeT *BB) const {
+  DomTreeNodeOnView<NodeT, View> *getNode(const NodeT *BB) const {
     auto I = DomTreeNodes.find(BB);
     if (I != DomTreeNodes.end())
       return I->second.get();
@@ -356,7 +368,7 @@ protected:
   }
 
   /// See getNode.
-  DomTreeNodeBase<NodeT> *operator[](const NodeT *BB) const {
+  DomTreeNodeOnView<NodeT, View> *operator[](const NodeT *BB) const {
     return getNode(BB);
   }
 
@@ -367,20 +379,20 @@ protected:
   /// post-dominance information must be capable of dealing with this
   /// possibility.
   ///
-  DomTreeNodeBase<NodeT> *getRootNode() { return RootNode; }
-  const DomTreeNodeBase<NodeT> *getRootNode() const { return RootNode; }
+  DomTreeNodeOnView<NodeT, View> *getRootNode() { return RootNode; }
+  const DomTreeNodeOnView<NodeT, View> *getRootNode() const { return RootNode; }
 
   /// Get all nodes dominated by R, including R itself.
   void getDescendants(NodeT *R, SmallVectorImpl<NodeT *> &Result) const {
     Result.clear();
-    const DomTreeNodeBase<NodeT> *RN = getNode(R);
+    const DomTreeNodeOnView<NodeT, View> *RN = getNode(R);
     if (!RN)
       return; // If R is unreachable, it will not be present in the DOM tree.
-    SmallVector<const DomTreeNodeBase<NodeT> *, 8> WL;
+    SmallVector<const DomTreeNodeOnView<NodeT, View> *, 8> WL;
     WL.push_back(RN);
 
     while (!WL.empty()) {
-      const DomTreeNodeBase<NodeT> *N = WL.pop_back_val();
+      const DomTreeNodeOnView<NodeT, View> *N = WL.pop_back_val();
       Result.push_back(N->getBlock());
       WL.append(N->begin(), N->end());
     }
@@ -389,8 +401,8 @@ protected:
   /// properlyDominates - Returns true iff A dominates B and A != B.
   /// Note that this is not a constant time operation!
   ///
-  bool properlyDominates(const DomTreeNodeBase<NodeT> *A,
-                         const DomTreeNodeBase<NodeT> *B) const {
+  bool properlyDominates(const DomTreeNodeOnView<NodeT, View> *A,
+                         const DomTreeNodeOnView<NodeT, View> *B) const {
     if (!A || !B)
       return false;
     if (A == B)
@@ -408,13 +420,13 @@ protected:
     return isReachableFromEntry(getNode(const_cast<NodeT *>(A)));
   }
 
-  bool isReachableFromEntry(const DomTreeNodeBase<NodeT> *A) const { return A; }
+  bool isReachableFromEntry(const DomTreeNodeOnView<NodeT, View> *A) const { return A; }
 
   /// dominates - Returns true iff A dominates B.  Note that this is not a
   /// constant time operation!
   ///
-  bool dominates(const DomTreeNodeBase<NodeT> *A,
-                 const DomTreeNodeBase<NodeT> *B) const {
+  bool dominates(const DomTreeNodeOnView<NodeT, View> *A,
+                 const DomTreeNodeOnView<NodeT, View> *B) const {
     // A node trivially dominates itself.
     if (B == A)
       return true;
@@ -478,8 +490,8 @@ protected:
         return &Entry;
     }
 
-    DomTreeNodeBase<NodeT> *NodeA = getNode(A);
-    DomTreeNodeBase<NodeT> *NodeB = getNode(B);
+    DomTreeNodeOnView<NodeT, View> *NodeA = getNode(A);
+    DomTreeNodeOnView<NodeT, View> *NodeB = getNode(B);
     assert(NodeA && "A must be in the tree");
     assert(NodeB && "B must be in the tree");
 
@@ -502,7 +514,7 @@ protected:
                                       const_cast<NodeT *>(B));
   }
 
-  bool isVirtualRoot(const DomTreeNodeBase<NodeT> *A) const {
+  bool isVirtualRoot(const DomTreeNodeOnView<NodeT, View> *A) const {
     return isPostDominator() && !A->getBlock();
   }
 
@@ -544,7 +556,7 @@ protected:
   void applyUpdates(ArrayRef<UpdateType> Updates) {
     GraphDiff<NodePtr, IsPostDominator> PreViewCFG(
         Updates, /*ReverseApplyUpdates=*/true);
-    DomTreeBuilder::ApplyUpdates(*this, PreViewCFG, nullptr);
+    DomTreeBuilder::ApplyUpdates<NodeT, IsPostDom, View>(*this, PreViewCFG, nullptr);
   }
 
   /// \param Updates An ordered sequence of updates to perform. The current CFG
@@ -556,7 +568,7 @@ protected:
                     ArrayRef<UpdateType> PostViewUpdates) {
     if (Updates.empty()) {
       GraphDiff<NodePtr, IsPostDom> PostViewCFG(PostViewUpdates);
-      DomTreeBuilder::ApplyUpdates(*this, PostViewCFG, &PostViewCFG);
+      DomTreeBuilder::ApplyUpdates<NodeT, IsPostDom, View>(*this, PostViewCFG, &PostViewCFG);
     } else {
       // PreViewCFG needs to merge Updates and PostViewCFG. The updates in
       // Updates need to be reversed, and match the direction in PostViewCFG.
@@ -568,7 +580,7 @@ protected:
       GraphDiff<NodePtr, IsPostDom> PreViewCFG(AllUpdates,
                                                /*ReverseApplyUpdates=*/true);
       GraphDiff<NodePtr, IsPostDom> PostViewCFG(PostViewUpdates);
-      DomTreeBuilder::ApplyUpdates(*this, PreViewCFG, &PostViewCFG);
+      DomTreeBuilder::ApplyUpdates<NodeT, IsPostDom, View>(*this, PreViewCFG, &PostViewCFG);
     }
   }
 
@@ -616,9 +628,9 @@ protected:
   /// \param DomBB CFG node that is dominator for BB.
   /// \returns New dominator tree node that represents new CFG node.
   ///
-  DomTreeNodeBase<NodeT> *addNewBlock(NodeT *BB, NodeT *DomBB) {
+  DomTreeNodeOnView<NodeT, View> *addNewBlock(NodeT *BB, NodeT *DomBB) {
     assert(getNode(BB) == nullptr && "Block already in dominator tree!");
-    DomTreeNodeBase<NodeT> *IDomNode = getNode(DomBB);
+    DomTreeNodeOnView<NodeT, View> *IDomNode = getNode(DomBB);
     assert(IDomNode && "Not immediate dominator specified for block!");
     DFSInfoValid = false;
     return createChild(BB, IDomNode);
@@ -629,12 +641,12 @@ protected:
   /// \param BB New node in CFG.
   /// \returns New dominator tree node that represents new CFG node.
   ///
-  DomTreeNodeBase<NodeT> *setNewRoot(NodeT *BB) {
+  DomTreeNodeOnView<NodeT, View> *setNewRoot(NodeT *BB) {
     assert(getNode(BB) == nullptr && "Block already in dominator tree!");
     assert(!this->isPostDominator() &&
            "Cannot change root of post-dominator tree");
     DFSInfoValid = false;
-    DomTreeNodeBase<NodeT> *NewNode = createNode(BB);
+    DomTreeNodeOnView<NodeT, View> *NewNode = createNode(BB);
     if (Roots.empty()) {
       addRoot(BB);
     } else {
@@ -652,8 +664,8 @@ protected:
   /// changeImmediateDominator - This method is used to update the dominator
   /// tree information when a node's immediate dominator changes.
   ///
-  void changeImmediateDominator(DomTreeNodeBase<NodeT> *N,
-                                DomTreeNodeBase<NodeT> *NewIDom) {
+  void changeImmediateDominator(DomTreeNodeOnView<NodeT, View> *N,
+                                DomTreeNodeOnView<NodeT, View> *NewIDom) {
     assert(N && NewIDom && "Cannot change null node pointers!");
     DFSInfoValid = false;
     N->setIDom(NewIDom);
@@ -667,14 +679,14 @@ protected:
   /// dominate any other blocks. Removes node from its immediate dominator's
   /// children list. Deletes dominator node associated with basic block BB.
   void eraseNode(NodeT *BB) {
-    DomTreeNodeBase<NodeT> *Node = getNode(BB);
+    DomTreeNodeOnView<NodeT, View> *Node = getNode(BB);
     assert(Node && "Removing node that isn't in dominator tree.");
     assert(Node->isLeaf() && "Node is not a leaf node.");
 
     DFSInfoValid = false;
 
     // Remove node from immediate dominator's children list.
-    DomTreeNodeBase<NodeT> *IDom = Node->getIDom();
+    DomTreeNodeOnView<NodeT, View> *IDom = Node->getIDom();
     if (IDom) {
       const auto I = find(IDom->Children, Node);
       assert(I != IDom->Children.end() &&
@@ -699,9 +711,9 @@ protected:
   /// tree to reflect this change.
   void splitBlock(NodeT *NewBB) {
     if (IsPostDominator)
-      Split<Inverse<NodeT *>>(NewBB);
+      Split<Inverse<View<NodeT *>>>(NewBB);
     else
-      Split<NodeT *>(NewBB);
+      Split<View<NodeT *>>(NewBB);
   }
 
   /// print - Convert to human readable form
@@ -735,11 +747,11 @@ public:
       return;
     }
 
-    SmallVector<std::pair<const DomTreeNodeBase<NodeT> *,
-                          typename DomTreeNodeBase<NodeT>::const_iterator>,
+    SmallVector<std::pair<const DomTreeNodeOnView<NodeT, View> *,
+                          typename DomTreeNodeOnView<NodeT, View>::const_iterator>,
                 32> WorkStack;
 
-    const DomTreeNodeBase<NodeT> *ThisRoot = getRootNode();
+    const DomTreeNodeOnView<NodeT, View> *ThisRoot = getRootNode();
     assert((!Parent || ThisRoot) && "Empty constructed DomTree");
     if (!ThisRoot)
       return;
@@ -752,7 +764,7 @@ public:
     ThisRoot->DFSNumIn = DFSNum++;
 
     while (!WorkStack.empty()) {
-      const DomTreeNodeBase<NodeT> *Node = WorkStack.back().first;
+      const DomTreeNodeOnView<NodeT, View> *Node = WorkStack.back().first;
       const auto ChildIt = WorkStack.back().second;
 
       // If we visited all of the children of this node, "recurse" back up the
@@ -762,7 +774,7 @@ public:
         WorkStack.pop_back();
       } else {
         // Otherwise, recursively visit this child.
-        const DomTreeNodeBase<NodeT> *Child = *ChildIt;
+        const DomTreeNodeOnView<NodeT, View> *Child = *ChildIt;
         ++WorkStack.back().second;
 
         WorkStack.push_back({Child, Child->begin()});
@@ -815,15 +827,16 @@ public:
 protected:
   void addRoot(NodeT *BB) { this->Roots.push_back(BB); }
 
-  DomTreeNodeBase<NodeT> *createChild(NodeT *BB, DomTreeNodeBase<NodeT> *IDom) {
+  DomTreeNodeOnView<NodeT, View> *
+  createChild(NodeT *BB, DomTreeNodeOnView<NodeT, View> *IDom) {
     return (DomTreeNodes[BB] = IDom->addChild(
-                std::make_unique<DomTreeNodeBase<NodeT>>(BB, IDom)))
+                std::make_unique<DomTreeNodeOnView<NodeT, View>>(BB, IDom)))
         .get();
   }
 
-  DomTreeNodeBase<NodeT> *createNode(NodeT *BB) {
+  DomTreeNodeOnView<NodeT, View> *createNode(NodeT *BB) {
     return (DomTreeNodes[BB] =
-                std::make_unique<DomTreeNodeBase<NodeT>>(BB, nullptr))
+                std::make_unique<DomTreeNodeOnView<NodeT, View>>(BB, nullptr))
         .get();
   }
 
@@ -872,25 +885,25 @@ protected:
     }
 
     // Create the new dominator tree node... and set the idom of NewBB.
-    DomTreeNodeBase<NodeT> *NewBBNode = addNewBlock(NewBB, NewBBIDom);
+    DomTreeNodeOnView<NodeT, View> *NewBBNode = addNewBlock(NewBB, NewBBIDom);
 
     // If NewBB strictly dominates other blocks, then it is now the immediate
     // dominator of NewBBSucc.  Update the dominator tree as appropriate.
     if (NewBBDominatesNewBBSucc) {
-      DomTreeNodeBase<NodeT> *NewBBSuccNode = getNode(NewBBSucc);
+      DomTreeNodeOnView<NodeT, View> *NewBBSuccNode = getNode(NewBBSucc);
       changeImmediateDominator(NewBBSuccNode, NewBBNode);
     }
   }
 
  private:
-  bool dominatedBySlowTreeWalk(const DomTreeNodeBase<NodeT> *A,
-                               const DomTreeNodeBase<NodeT> *B) const {
+  bool dominatedBySlowTreeWalk(const DomTreeNodeOnView<NodeT, View> *A,
+                               const DomTreeNodeOnView<NodeT, View> *B) const {
     assert(A != B);
     assert(isReachableFromEntry(B));
     assert(isReachableFromEntry(A));
 
     const unsigned ALevel = A->getLevel();
-    const DomTreeNodeBase<NodeT> *IDom;
+    const DomTreeNodeOnView<NodeT, View> *IDom;
 
     // Don't walk nodes above A's subtree. When we reach A's level, we must
     // either find A or be in some other subtree not dominated by A.
@@ -911,16 +924,22 @@ protected:
   }
 };
 
-template <typename T>
-using DomTreeBase = DominatorTreeBase<T, false>;
+template <typename T, template<typename> class View>
+using DomTreeOnView = DominatorTreeOnView<T, false, View>;
 
 template <typename T>
-using PostDomTreeBase = DominatorTreeBase<T, true>;
+using DomTreeBase = DomTreeOnView<T, DTIdentityView>;
+
+template <typename T, template<typename> class View>
+using PostDomTreeOnView = DominatorTreeOnView<T, true, View>;
+
+template <typename T>
+using PostDomTreeBase = PostDomTreeOnView<T, DTIdentityView>;
 
 // These two functions are declared out of line as a workaround for building
 // with old (< r147295) versions of clang because of pr11642.
-template <typename NodeT, bool IsPostDom>
-bool DominatorTreeBase<NodeT, IsPostDom>::dominates(const NodeT *A,
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+bool DominatorTreeOnView<NodeT, IsPostDom, View>::dominates(const NodeT *A,
                                                     const NodeT *B) const {
   if (A == B)
     return true;
@@ -931,8 +950,8 @@ bool DominatorTreeBase<NodeT, IsPostDom>::dominates(const NodeT *A,
   return dominates(getNode(const_cast<NodeT *>(A)),
                    getNode(const_cast<NodeT *>(B)));
 }
-template <typename NodeT, bool IsPostDom>
-bool DominatorTreeBase<NodeT, IsPostDom>::properlyDominates(
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+bool DominatorTreeOnView<NodeT, IsPostDom, View>::properlyDominates(
     const NodeT *A, const NodeT *B) const {
   if (A == B)
     return false;

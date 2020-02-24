@@ -1537,7 +1537,7 @@ void VPReductionPHIRecipe::print(raw_ostream &O, const Twine &Indent,
 }
 #endif
 
-template void DomTreeBuilder::Calculate<VPDominatorTree>(VPDominatorTree &DT);
+template void DomTreeBuilder::Calculate<VPBlockBase, false, DTIdentityView>(VPDominatorTree &DT);
 
 void VPValue::replaceAllUsesWith(VPValue *New) {
   for (unsigned J = 0; J < getNumUsers();) {

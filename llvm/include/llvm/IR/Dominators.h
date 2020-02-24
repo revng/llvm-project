@@ -43,50 +43,57 @@ class Value;
 class raw_ostream;
 template <class GraphType> struct GraphTraits;
 
-extern template class DomTreeNodeBase<BasicBlock>;
-extern template class DominatorTreeBase<BasicBlock, false>; // DomTree
-extern template class DominatorTreeBase<BasicBlock, true>; // PostDomTree
+extern template class DomTreeNodeOnView<BasicBlock, DTIdentityView>;
+extern template class DominatorTreeOnView<BasicBlock, false, DTIdentityView>; // DomTree
+extern template class DominatorTreeOnView<BasicBlock, true, DTIdentityView>; // PostDomTree
 
 extern template class cfg::Update<BasicBlock *>;
 
 namespace DomTreeBuilder {
-using BBDomTree = DomTreeBase<BasicBlock>;
-using BBPostDomTree = PostDomTreeBase<BasicBlock>;
+template<template<typename> class View>
+using BBDomTreeOnView = DomTreeOnView<BasicBlock, View>;
+
+using BBDomTree = DomTreeOnView<BasicBlock, DTIdentityView>;
+
+template<template<typename> class View>
+using BBPostDomTreeOnView = PostDomTreeOnView<BasicBlock, View>;
+
+using BBPostDomTree = PostDomTreeOnView<BasicBlock, DTIdentityView>;
 
 using BBUpdates = ArrayRef<llvm::cfg::Update<BasicBlock *>>;
 
-using BBDomTreeGraphDiff = GraphDiff<BasicBlock *, false>;
-using BBPostDomTreeGraphDiff = GraphDiff<BasicBlock *, true>;
+using BBDomTreeGraphDiff = GraphDiff<BBDomTree::NodePtr, false>;
+using BBPostDomTreeGraphDiff = GraphDiff<BBPostDomTree::NodePtr, true>;
 
-extern template void Calculate<BBDomTree>(BBDomTree &DT);
-extern template void CalculateWithUpdates<BBDomTree>(BBDomTree &DT,
-                                                     BBUpdates U);
+extern template void Calculate<BasicBlock, false, DTIdentityView>(BBDomTree &DT);
+extern template void
+CalculateWithUpdates<BasicBlock, false, DTIdentityView>(BBDomTree &DT, BBUpdates U);
 
-extern template void Calculate<BBPostDomTree>(BBPostDomTree &DT);
+extern template void Calculate<BasicBlock, true, DTIdentityView>(BBPostDomTree &DT);
 
-extern template void InsertEdge<BBDomTree>(BBDomTree &DT, BasicBlock *From,
-                                           BasicBlock *To);
-extern template void InsertEdge<BBPostDomTree>(BBPostDomTree &DT,
-                                               BasicBlock *From,
-                                               BasicBlock *To);
+extern template void
+InsertEdge<BasicBlock, false, DTIdentityView>(BBDomTree &DT, BasicBlock *From, BasicBlock *To);
+extern template void
+InsertEdge<BasicBlock, true, DTIdentityView>(BBPostDomTree &DT, BasicBlock *From, BasicBlock *To);
 
-extern template void DeleteEdge<BBDomTree>(BBDomTree &DT, BasicBlock *From,
-                                           BasicBlock *To);
-extern template void DeleteEdge<BBPostDomTree>(BBPostDomTree &DT,
-                                               BasicBlock *From,
-                                               BasicBlock *To);
+extern template void
+DeleteEdge<BasicBlock, false, DTIdentityView>(BBDomTree &DT, BasicBlock *From, BasicBlock *To);
+extern template void
+DeleteEdge<BasicBlock, true, DTIdentityView>(BBPostDomTree &DT, BasicBlock *From, BasicBlock *To);
 
-extern template void ApplyUpdates<BBDomTree>(BBDomTree &DT,
-                                             BBDomTreeGraphDiff &,
-                                             BBDomTreeGraphDiff *);
-extern template void ApplyUpdates<BBPostDomTree>(BBPostDomTree &DT,
-                                                 BBPostDomTreeGraphDiff &,
-                                                 BBPostDomTreeGraphDiff *);
+extern template void
+ApplyUpdates<BasicBlock, false, DTIdentityView>(BBDomTree &DT,
+                                                BBDomTreeGraphDiff &,
+                                                BBDomTreeGraphDiff *);
+extern template void
+ApplyUpdates<BasicBlock, true, DTIdentityView>(BBPostDomTree &DT,
+                                               BBPostDomTreeGraphDiff &,
+                                               BBPostDomTreeGraphDiff *);
 
-extern template bool Verify<BBDomTree>(const BBDomTree &DT,
-                                       BBDomTree::VerificationLevel VL);
-extern template bool Verify<BBPostDomTree>(const BBPostDomTree &DT,
-                                           BBPostDomTree::VerificationLevel VL);
+extern template bool
+Verify<BasicBlock, false, DTIdentityView>(const BBDomTree &DT, BBDomTree::VerificationLevel VL);
+extern template bool
+Verify<BasicBlock, true, DTIdentityView>(const BBPostDomTree &DT, BBPostDomTree::VerificationLevel VL);
 }  // namespace DomTreeBuilder
 
 using DomTreeNode = DomTreeNodeBase<BasicBlock>;

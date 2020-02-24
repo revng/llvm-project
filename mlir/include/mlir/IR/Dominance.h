@@ -22,8 +22,8 @@
 #include "mlir/IR/RegionGraphTraits.h"
 #include "llvm/Support/GenericDomTree.h"
 
-extern template class llvm::DominatorTreeBase<mlir::Block, false>;
-extern template class llvm::DominatorTreeBase<mlir::Block, true>;
+extern template class llvm::DominatorTreeOnView<mlir::Block, false, llvm::DTIdentityView>;
+extern template class llvm::DominatorTreeOnView<mlir::Block, true, llvm::DTIdentityView>;
 
 namespace mlir {
 using DominanceInfoNode = llvm::DomTreeNodeBase<Block>;

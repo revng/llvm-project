@@ -51,13 +51,13 @@
 namespace llvm {
 namespace DomTreeBuilder {
 
-template <typename DomTreeT>
-struct SemiNCAInfo {
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+struct SemiNCAInfoOnView {
+  using DomTreeT = DominatorTreeOnView<NodeT, IsPostDom, View>;
   using NodePtr = typename DomTreeT::NodePtr;
-  using NodeT = typename DomTreeT::NodeType;
-  using TreeNodePtr = DomTreeNodeBase<NodeT> *;
+  using TreeNode = DomTreeNodeOnView<NodeT, View>;
+  using TreeNodePtr = TreeNode*;
   using RootsT = decltype(DomTreeT::Roots);
-  static constexpr bool IsPostDom = DomTreeT::IsPostDominator;
   using GraphDiffT = GraphDiff<NodePtr, IsPostDom>;
 
   // Information record used by Semi-NCA during tree construction.
@@ -95,7 +95,7 @@ struct SemiNCAInfo {
   using BatchUpdatePtr = BatchUpdateInfo *;
 
   // If BUI is a nullptr, then there's no batch update in progress.
-  SemiNCAInfo(BatchUpdatePtr BUI) : BatchUpdates(BUI) {}
+  SemiNCAInfoOnView(BatchUpdatePtr BUI) : BatchUpdates(BUI) {}
 
   void clear() {
     NumToNode = {nullptr}; // Restore to initial state with a dummy start node.
@@ -107,14 +107,14 @@ struct SemiNCAInfo {
   template <bool Inversed>
   static SmallVector<NodePtr, 8> getChildren(NodePtr N, BatchUpdatePtr BUI) {
     if (BUI)
-      return BUI->PreViewCFG.template getChildren<Inversed>(N);
+      return BUI->PreViewCFG.template getChildren<Inversed, View>(N);
     return getChildren<Inversed>(N);
   }
 
   template <bool Inversed>
   static SmallVector<NodePtr, 8> getChildren(NodePtr N) {
     using DirectedNodeT =
-        std::conditional_t<Inversed, Inverse<NodePtr>, NodePtr>;
+        std::conditional_t<Inversed, Inverse<View<NodePtr>>, View<NodePtr>>;
     auto R = children<DirectedNodeT>(N);
     SmallVector<NodePtr, 8> Res(detail::reverse_if<!Inversed>(R));
 
@@ -357,7 +357,7 @@ struct SemiNCAInfo {
       return Roots;
     }
 
-    SemiNCAInfo SNCA(BUI);
+    SemiNCAInfoOnView SNCA(BUI);
 
     // PostDominatorTree always has a virtual root.
     SNCA.addVirtualRoot();
@@ -508,7 +508,7 @@ struct SemiNCAInfo {
     assert(IsPostDom && "This function is for postdominators only");
     LLVM_DEBUG(dbgs() << "Removing redundant roots\n");
 
-    SemiNCAInfo SNCA(BUI);
+    SemiNCAInfoOnView SNCA(BUI);
 
     for (unsigned i = 0; i < Roots.size(); ++i) {
       auto &Root = Roots[i];
@@ -569,7 +569,7 @@ struct SemiNCAInfo {
     }
     // This is rebuilding the whole tree, not incrementally, but PostViewBUI is
     // used in case the caller needs a DT update with a CFGView.
-    SemiNCAInfo SNCA(PostViewBUI);
+    SemiNCAInfoOnView SNCA(PostViewBUI);
 
     // Step #0: Number blocks in depth-first order and initialize variables used
     // in later stages of the algorithm.
@@ -902,7 +902,7 @@ struct SemiNCAInfo {
       return false;
     };
 
-    SemiNCAInfo SNCA(BUI);
+    SemiNCAInfoOnView SNCA(BUI);
     SNCA.runDFS(Root, 0, UnreachableDescender, 0);
     SNCA.runSemiNCA(DT);
     SNCA.attachNewSubtree(DT, Incoming);
@@ -995,7 +995,7 @@ struct SemiNCAInfo {
     LLVM_DEBUG(dbgs() << "\tTop of subtree: " << BlockNamePrinter(ToIDomTN)
                       << "\n");
 
-    SemiNCAInfo SNCA(BUI);
+    SemiNCAInfoOnView SNCA(BUI);
     SNCA.runDFS(ToIDom, 0, DescendBelow, 0);
     LLVM_DEBUG(dbgs() << "\tRunning Semi-NCA\n");
     SNCA.runSemiNCA(DT, Level);
@@ -1062,7 +1062,7 @@ struct SemiNCAInfo {
       return false;
     };
 
-    SemiNCAInfo SNCA(BUI);
+    SemiNCAInfoOnView SNCA(BUI);
     unsigned LastDFSNum =
         SNCA.runDFS(ToTN->getBlock(), 0, DescendAndCollect, 0);
 
@@ -1556,48 +1556,46 @@ struct SemiNCAInfo {
   }
 };
 
-template <class DomTreeT>
-void Calculate(DomTreeT &DT) {
-  SemiNCAInfo<DomTreeT>::CalculateFromScratch(DT, nullptr);
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void Calculate(DominatorTreeOnView<NodeT, IsPostDom, View> &DT) {
+  SemiNCAInfoOnView<NodeT, IsPostDom, View>::CalculateFromScratch(DT, nullptr);
 }
 
-template <typename DomTreeT>
-void CalculateWithUpdates(DomTreeT &DT,
-                          ArrayRef<typename DomTreeT::UpdateType> Updates) {
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void CalculateWithUpdates(DominatorTreeOnView<NodeT, IsPostDom, View> &DT,
+                          ArrayRef<typename DominatorTreeOnView<NodeT, IsPostDom, View>::UpdateType> Updates) {
   // FIXME: Updated to use the PreViewCFG and behave the same as until now.
   // This behavior is however incorrect; this actually needs the PostViewCFG.
-  GraphDiff<typename DomTreeT::NodePtr, DomTreeT::IsPostDominator> PreViewCFG(
+  GraphDiff<typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr, IsPostDom> PreViewCFG(
       Updates, /*ReverseApplyUpdates=*/true);
-  typename SemiNCAInfo<DomTreeT>::BatchUpdateInfo BUI(PreViewCFG);
-  SemiNCAInfo<DomTreeT>::CalculateFromScratch(DT, &BUI);
+  typename SemiNCAInfoOnView<NodeT, IsPostDom, View>::BatchUpdateInfo BUI(PreViewCFG);
+  SemiNCAInfoOnView<NodeT, IsPostDom, View>::CalculateFromScratch(DT, &BUI);
 }
 
-template <class DomTreeT>
-void InsertEdge(DomTreeT &DT, typename DomTreeT::NodePtr From,
-                typename DomTreeT::NodePtr To) {
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void InsertEdge(DominatorTreeOnView<NodeT, IsPostDom, View> &DT, typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr From,
+                typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr To) {
   if (DT.isPostDominator()) std::swap(From, To);
-  SemiNCAInfo<DomTreeT>::InsertEdge(DT, nullptr, From, To);
+  SemiNCAInfoOnView<NodeT, IsPostDom, View>::InsertEdge(DT, nullptr, From, To);
 }
 
-template <class DomTreeT>
-void DeleteEdge(DomTreeT &DT, typename DomTreeT::NodePtr From,
-                typename DomTreeT::NodePtr To) {
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void DeleteEdge(DominatorTreeOnView<NodeT, IsPostDom, View> &DT, typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr From,
+                typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr To) {
   if (DT.isPostDominator()) std::swap(From, To);
-  SemiNCAInfo<DomTreeT>::DeleteEdge(DT, nullptr, From, To);
+  SemiNCAInfoOnView<NodeT, IsPostDom, View>::DeleteEdge(DT, nullptr, From, To);
 }
 
-template <class DomTreeT>
-void ApplyUpdates(DomTreeT &DT,
-                  GraphDiff<typename DomTreeT::NodePtr,
-                            DomTreeT::IsPostDominator> &PreViewCFG,
-                  GraphDiff<typename DomTreeT::NodePtr,
-                            DomTreeT::IsPostDominator> *PostViewCFG) {
-  SemiNCAInfo<DomTreeT>::ApplyUpdates(DT, PreViewCFG, PostViewCFG);
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+void ApplyUpdates(DominatorTreeOnView<NodeT, IsPostDom, View> &DT,
+                  GraphDiff<typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr, IsPostDom> &PreViewCFG,
+                  GraphDiff<typename DominatorTreeOnView<NodeT, IsPostDom, View>::NodePtr, IsPostDom> *PostViewCFG) {
+  SemiNCAInfoOnView<NodeT, IsPostDom, View>::ApplyUpdates(DT, PreViewCFG, PostViewCFG);
 }
 
-template <class DomTreeT>
-bool Verify(const DomTreeT &DT, typename DomTreeT::VerificationLevel VL) {
-  SemiNCAInfo<DomTreeT> SNCA(nullptr);
+template <typename NodeT, bool IsPostDom, template<typename> class View>
+bool Verify(const DominatorTreeOnView<NodeT, IsPostDom, View> &DT, typename DominatorTreeOnView<NodeT, IsPostDom, View>::VerificationLevel VL) {
+  SemiNCAInfoOnView<NodeT, IsPostDom, View> SNCA(nullptr);
 
   // Simplist check is to compare against a new tree. This will also
   // usefully print the old and new trees, if they are different.
@@ -1609,12 +1607,12 @@ bool Verify(const DomTreeT &DT, typename DomTreeT::VerificationLevel VL) {
       !SNCA.VerifyLevels(DT) || !SNCA.VerifyDFSNumbers(DT))
     return false;
 
-  // Extra checks depending on VerificationLevel. Up to O(N^3).
-  if (VL == DomTreeT::VerificationLevel::Basic ||
-      VL == DomTreeT::VerificationLevel::Full)
+  // Extra checks depending on VerificationLevel. Up to O(N^3)
+  if (VL == DominatorTreeOnView<NodeT, IsPostDom, View>::VerificationLevel::Basic ||
+      VL == DominatorTreeOnView<NodeT, IsPostDom, View>::VerificationLevel::Full)
     if (!SNCA.verifyParentProperty(DT))
       return false;
-  if (VL == DomTreeT::VerificationLevel::Full)
+  if (VL == DominatorTreeOnView<NodeT, IsPostDom, View>::VerificationLevel::Full)
     if (!SNCA.verifySiblingProperty(DT))
       return false;
 
