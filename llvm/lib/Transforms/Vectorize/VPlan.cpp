@@ -853,7 +853,7 @@ void VPWidenCanonicalIVRecipe::print(raw_ostream &O, const Twine &Indent,
   O << " = WIDEN-CANONICAL-INDUCTION";
 }
 
-template void DomTreeBuilder::Calculate<VPDominatorTree>(VPDominatorTree &DT);
+template void DomTreeBuilder::Calculate<VPBlockBase, false, DTIdentityView>(VPDominatorTree &DT);
 
 void VPValue::replaceAllUsesWith(VPValue *New) {
   for (VPUser *User : users())
