@@ -18,6 +18,7 @@
 #include "llvm/ADT/GenericSSAContext.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/ModuleSlotTracker.h"
+#include "llvm/Support/GenericDomTree.h"
 #include "llvm/Support/Printable.h"
 
 #include <memory>
@@ -28,7 +29,6 @@ class Function;
 class Instruction;
 class Value;
 template <typename> class SmallVectorImpl;
-template <typename, bool> class DominatorTreeBase;
 
 inline auto instrs(const BasicBlock &BB) {
   return llvm::make_range(BB.begin(), BB.end());
