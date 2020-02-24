@@ -25,8 +25,8 @@ using DomUpdate = DominatorTree::UpdateType;
 static_assert(
     std::is_same_v<DomUpdate, PostDominatorTree::UpdateType>,
     "Trees differing only in IsPostDom should have the same update types");
-using DomSNCA = DomTreeBuilder::SemiNCAInfo<DomTreeBuilder::BBDomTree>;
-using PostDomSNCA = DomTreeBuilder::SemiNCAInfo<DomTreeBuilder::BBPostDomTree>;
+using DomSNCA = DomTreeBuilder::SemiNCAInfoOnView<BasicBlock, false, DTIdentityView>;
+using PostDomSNCA = DomTreeBuilder::SemiNCAInfoOnView<BasicBlock, true, DTIdentityView>;
 const auto Insert = DominatorTree::Insert;
 const auto Delete = DominatorTree::Delete;
 
