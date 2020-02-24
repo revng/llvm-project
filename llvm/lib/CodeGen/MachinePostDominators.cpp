@@ -17,7 +17,7 @@
 using namespace llvm;
 
 namespace llvm {
-template class DominatorTreeBase<MachineBasicBlock, true>; // PostDomTreeBase
+template class DominatorTreeOnView<MachineBasicBlock, true, DTIdentityView>; // PostDomTreeBase
 
 extern bool VerifyMachineDomInfo;
 } // namespace llvm

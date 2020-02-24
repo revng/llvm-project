@@ -132,9 +132,9 @@ public:
   }
 
   using VectRet = SmallVector<NodePtr, 8>;
-  template <bool InverseEdge> VectRet getChildren(NodePtr N) const {
+  template <bool InverseEdge, template <typename> class View> VectRet getChildren(NodePtr N) const {
     using DirectedNodeT =
-        std::conditional_t<InverseEdge, Inverse<NodePtr>, NodePtr>;
+        std::conditional_t<InverseEdge, Inverse<View<NodePtr>>, View<NodePtr>>;
     auto R = children<DirectedNodeT>(N);
     VectRet Res = VectRet(detail::reverse_if<!InverseEdge>(R));
 

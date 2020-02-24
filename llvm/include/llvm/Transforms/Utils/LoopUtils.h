@@ -20,8 +20,17 @@
 
 namespace llvm {
 
-template <typename T> class DomTreeNodeBase;
+template<typename X>
+using DTIdentityView = X;
+
+template <typename NodeT, template<typename> class View>
+class DomTreeNodeOnView;
+
+template <typename NodeT>
+using DomTreeNodeBase = DomTreeNodeOnView<NodeT, DTIdentityView>;
+
 using DomTreeNode = DomTreeNodeBase<BasicBlock>;
+
 class AAResults;
 class AliasSet;
 class AliasSetTracker;

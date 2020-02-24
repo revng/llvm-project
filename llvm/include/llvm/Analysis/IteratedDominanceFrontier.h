@@ -73,7 +73,7 @@ ChildrenGetterTy<BasicBlock, IsPostDom>::get(const NodeRef &N) {
     return {Children.begin(), Children.end()};
   }
 
-  return GD->template getChildren<IsPostDom>(N);
+  return GD->template getChildren<IsPostDom, DTIdentityView>(N);
 }
 
 } // end of namespace IDFCalculatorDetail

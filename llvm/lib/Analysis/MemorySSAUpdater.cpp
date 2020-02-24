@@ -876,7 +876,7 @@ void MemorySSAUpdater::applyInsertUpdates(ArrayRef<CFGUpdate> Updates,
       // Check number of predecessors, we only care if there's more than one.
       unsigned Count = 0;
       BasicBlock *Pred = nullptr;
-      for (auto *Pi : GD->template getChildren</*InverseEdge=*/true>(BB)) {
+      for (auto *Pi : GD->template getChildren</*InverseEdge=*/true, DTIdentityView>(BB)) {
         Pred = Pi;
         Count++;
         if (Count == 2)
@@ -970,7 +970,7 @@ void MemorySSAUpdater::applyInsertUpdates(ArrayRef<CFGUpdate> Updates,
     auto *BB = BBPredPair.first;
     const auto &AddedBlockSet = BBPredPair.second.Added;
     auto &PrevBlockSet = BBPredPair.second.Prev;
-    for (auto *Pi : GD->template getChildren</*InverseEdge=*/true>(BB)) {
+    for (auto *Pi : GD->template getChildren</*InverseEdge=*/true, DTIdentityView>(BB)) {
       if (!AddedBlockSet.count(Pi))
         PrevBlockSet.insert(Pi);
       EdgeCountMap[{Pi, BB}]++;
@@ -1121,7 +1121,7 @@ void MemorySSAUpdater::applyInsertUpdates(ArrayRef<CFGUpdate> Updates,
         for (unsigned I = 0, E = IDFPhi->getNumIncomingValues(); I < E; ++I)
           IDFPhi->setIncomingValue(I, GetLastDef(IDFPhi->getIncomingBlock(I)));
       } else {
-        for (auto *Pi : GD->template getChildren</*InverseEdge=*/true>(BBIDF))
+        for (auto *Pi : GD->template getChildren</*InverseEdge=*/true, DTIdentityView>(BBIDF))
           IDFPhi->addIncoming(GetLastDef(Pi), Pi);
       }
     }
