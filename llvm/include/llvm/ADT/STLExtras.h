@@ -219,7 +219,7 @@ public:
 
   ItTy getCurrent() { return this->I; }
 
-  FuncReturnTy operator*() { return F(*this->I); }
+  FuncReturnTy operator*() const { return F(*this->I); }
 
   bool operator==(const mapped_iterator &RHS) const {
     return mapped_iterator::iterator_adaptor_base::operator==(RHS);
