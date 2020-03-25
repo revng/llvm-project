@@ -299,6 +299,10 @@ public:
 
   FuncReturnTy operator*() const { return F(*this->I); }
 
+  bool operator==(const mapped_iterator &RHS) const {
+    return mapped_iterator::iterator_adaptor_base::operator==(RHS);
+  }
+
 private:
   FuncTy F;
 };
@@ -416,6 +420,10 @@ public:
     findNextValid();
     return *this;
   }
+
+  bool operator==(const filter_iterator_base &RHS) const {
+    return filter_iterator_base::iterator_adaptor_base::operator==(RHS);
+  }
 };
 
 /// Specialization of filter_iterator_base for forward iteration only.
@@ -429,6 +437,10 @@ public:
   filter_iterator_impl(WrappedIteratorT Begin, WrappedIteratorT End,
                        PredicateT Pred)
       : BaseT(Begin, End, Pred) {}
+
+  bool operator==(const filter_iterator_impl &RHS) const {
+    return filter_iterator_impl::filter_iterator_base::operator==(RHS);
+  }
 };
 
 /// Specialization of filter_iterator_base for bidirectional iteration.

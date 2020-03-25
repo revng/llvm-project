@@ -1259,6 +1259,9 @@ public:
     reference operator*() const {
       return SingleElement ? SingleElement : IteratorBase::operator*();
     }
+    bool operator==(const iterator &Other) const {
+      return IteratorBase::operator==(Other);
+    }
   };
 
   using const_iterator = iterator;

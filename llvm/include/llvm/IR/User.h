@@ -255,6 +255,9 @@ public:
 
     Value *operator*() const { return *I; }
     Value *operator->() const { return operator*(); }
+    bool operator==(const value_op_iterator &Other) const {
+      return value_op_iterator::iterator_adaptor_base::operator==(Other);
+    }
   };
 
   value_op_iterator value_op_begin() {
