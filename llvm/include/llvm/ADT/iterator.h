@@ -294,6 +294,10 @@ struct pointee_iterator
       : pointee_iterator::iterator_adaptor_base(std::forward<U &&>(u)) {}
 
   T &operator*() const { return **this->I; }
+
+  bool operator==(const pointee_iterator &Other) const {
+    return pointee_iterator::iterator_adaptor_base::operator==(Other);
+  }
 };
 
 template <typename RangeT, typename WrappedIteratorT =
@@ -322,6 +326,10 @@ public:
 
   T &operator*() { return Ptr = &*this->I; }
   const T &operator*() const { return Ptr = &*this->I; }
+
+  bool operator==(const pointer_iterator &Other) const {
+    return pointer_iterator::iterator_adaptor_base::operator==(Other);
+  }
 };
 
 template <typename RangeT, typename WrappedIteratorT =

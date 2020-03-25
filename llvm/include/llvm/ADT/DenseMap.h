@@ -1161,6 +1161,7 @@ class DenseMapIterator : DebugEpochBase::HandleBase {
   friend class DenseMapIterator<KeyT, ValueT, KeyInfoT, Bucket, false>;
 
   using ConstIterator = DenseMapIterator<KeyT, ValueT, KeyInfoT, Bucket, true>;
+  using NonConstIterator = DenseMapIterator<KeyT, ValueT, KeyInfoT, Bucket, false>;
 
 public:
   using difference_type = ptrdiff_t;
@@ -1219,7 +1220,24 @@ public:
            "comparing incomparable iterators!");
     return Ptr == RHS.Ptr;
   }
+
+  bool operator==(const NonConstIterator &RHS) const {
+    assert((!Ptr || isHandleInSync()) && "handle not in sync!");
+    assert((!RHS.Ptr || RHS.isHandleInSync()) && "handle not in sync!");
+    assert(getEpochAddress() == RHS.getEpochAddress() &&
+           "comparing incomparable iterators!");
+    return Ptr == RHS.Ptr;
+  }
+
   bool operator!=(const ConstIterator &RHS) const {
+    assert((!Ptr || isHandleInSync()) && "handle not in sync!");
+    assert((!RHS.Ptr || RHS.isHandleInSync()) && "handle not in sync!");
+    assert(getEpochAddress() == RHS.getEpochAddress() &&
+           "comparing incomparable iterators!");
+    return Ptr != RHS.Ptr;
+  }
+
+  bool operator!=(const NonConstIterator &RHS) const {
     assert((!Ptr || isHandleInSync()) && "handle not in sync!");
     assert((!RHS.Ptr || RHS.isHandleInSync()) && "handle not in sync!");
     assert(getEpochAddress() == RHS.getEpochAddress() &&
