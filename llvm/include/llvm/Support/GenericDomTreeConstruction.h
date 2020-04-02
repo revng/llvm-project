@@ -110,8 +110,10 @@ struct SemiNCAInfoOnView {
     using ResultTy = SmallVector<NodePtr, 8>;
 
     static ResultTy Get(NodePtr N, std::integral_constant<bool, false>) {
-      auto RChildren = reverse(children<View<NodePtr>>(N));
-      return ResultTy(RChildren.begin(), RChildren.end());
+      auto Children = children<View<NodePtr>>(N);
+      ResultTy Result(Children.begin(), Children.end());
+      std::reverse(Result.begin(), Result.end());
+      return Result;
     }
 
     static ResultTy Get(NodePtr N, std::integral_constant<bool, true>) {
