@@ -3545,12 +3545,11 @@ public:
     enum { NoReturnMask = 0x20 };
     enum { ProducesResultMask = 0x40 };
     enum { NoCallerSavedRegsMask = 0x80 };
-    enum { NoCfCheckMask = 0x800 };
     enum {
-      RegParmMask = ~(CallConvMask | NoReturnMask | ProducesResultMask |
-                      NoCallerSavedRegsMask | NoCfCheckMask),
+      RegParmMask =  0x700,
       RegParmOffset = 8
-    }; // Assumed to be the last field
+    };
+    enum { NoCfCheckMask = 0x800 };
     uint16_t Bits = CC_C;
 
     ExtInfo(unsigned Bits) : Bits(static_cast<uint16_t>(Bits)) {}
@@ -3580,7 +3579,7 @@ public:
     bool getProducesResult() const { return Bits & ProducesResultMask; }
     bool getNoCallerSavedRegs() const { return Bits & NoCallerSavedRegsMask; }
     bool getNoCfCheck() const { return Bits & NoCfCheckMask; }
-    bool getHasRegParm() const { return (Bits >> RegParmOffset) != 0; }
+    bool getHasRegParm() const { return ((Bits & RegParmMask) >> RegParmOffset) != 0; }
 
     unsigned getRegParm() const {
       unsigned RegParm = (Bits & RegParmMask) >> RegParmOffset;
