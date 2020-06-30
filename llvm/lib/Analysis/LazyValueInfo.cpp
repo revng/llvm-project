@@ -730,7 +730,8 @@ bool LazyValueInfoImpl::solveBlockValueImpl(ValueLatticeElement &Res,
               // composed by the result of countLeadingZero of the two extremes,
               // sorted.
               APInt Lower = GetAPInt(Range.getLower().countLeadingZeros());
-              APInt Upper = GetAPInt(Range.getUpper().countLeadingZeros());
+              APInt Last = Range.getUpper() - 1;
+              APInt Upper = GetAPInt(Last.countLeadingZeros());
 
               if (Lower.eq(Upper)) {
                 Res = VLE::get(ConstantInt::get(IC->getType(), Lower));
