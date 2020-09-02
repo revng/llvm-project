@@ -5,7 +5,7 @@
 
 function(get_source_info path revision repository)
   find_package(Git QUIET)
-  if(GIT_FOUND)
+  if(FALSE)
     execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --git-dir
       WORKING_DIRECTORY ${path}
       RESULT_VARIABLE git_result
