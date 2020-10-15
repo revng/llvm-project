@@ -312,6 +312,7 @@ Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
     .Case("sparcel", sparcel)
     .Case("sparcv9", sparcv9)
     .Case("systemz", systemz)
+    .Case("s390x", systemz)
     .Case("tce", tce)
     .Case("tcele", tcele)
     .Case("thumb", thumb)
