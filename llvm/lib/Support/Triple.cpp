@@ -307,6 +307,7 @@ Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
     .Case("thumb", thumb)
     .Case("thumbeb", thumbeb)
     .Case("x86", x86)
+    .Case("i386", x86)
     .Case("x86-64", x86_64)
     .Case("x86_64", x86_64)
     .Case("xcore", xcore)
