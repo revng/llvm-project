@@ -31,7 +31,7 @@ namespace llvm {
 // differently without requiring a copy of the original graph. This could
 // be achieved by carrying more data in NodeRef. See LoopBodyTraits for one
 // example.
-template<class GraphType>
+template<class GraphType, typename=void>
 struct GraphTraits {
   // Elements to provide:
 

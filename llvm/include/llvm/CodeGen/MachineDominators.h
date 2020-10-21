@@ -14,6 +14,7 @@
 #ifndef LLVM_CODEGEN_MACHINEDOMINATORS_H
 #define LLVM_CODEGEN_MACHINEDOMINATORS_H
 
+#include "llvm/ADT/GraphTraits.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
@@ -264,8 +265,6 @@ struct MachineDomTreeGraphTraitsBase {
   static ChildIteratorType child_begin(NodeRef N) { return N->begin(); }
   static ChildIteratorType child_end(NodeRef N) { return N->end(); }
 };
-
-template <class T> struct GraphTraits;
 
 template <>
 struct GraphTraits<MachineDomTreeNode *>
