@@ -25,46 +25,51 @@ using namespace llvm;
 
 void SystemZInstPrinter::printAddress(const MCAsmInfo *MAI, unsigned Base,
                                       const MCOperand &DispMO, unsigned Index,
-                                      raw_ostream &O) {
-  printOperand(DispMO, MAI, O);
+                                      raw_ostream &O, bool UseMarkup) {
+  printOperand(DispMO, MAI, O, UseMarkup);
   if (Base || Index) {
     O << '(';
     if (Index) {
-      printFormattedRegName(MAI, Index, O);
+      printFormattedRegName(MAI, Index, O, UseMarkup);
       if (Base)
         O << ',';
     }
     if (Base)
-      printFormattedRegName(MAI, Base, O);
+      printFormattedRegName(MAI, Base, O, UseMarkup);
     O << ')';
   }
 }
 
 void SystemZInstPrinter::printOperand(const MCOperand &MO, const MCAsmInfo *MAI,
-                                      raw_ostream &O) {
+                                      raw_ostream &O, bool UseMarkup) {
   if (MO.isReg()) {
     if (!MO.getReg())
       O << '0';
     else
-      printFormattedRegName(MAI, MO.getReg(), O);
+      printFormattedRegName(MAI, MO.getReg(), O, UseMarkup);
   }
-  else if (MO.isImm())
+  else if (MO.isImm()) {
+    if (UseMarkup)
+      O << "<imm:";
     O << MO.getImm();
-  else if (MO.isExpr())
+    if (UseMarkup)
+      O << ">";
+  } else if (MO.isExpr())
     MO.getExpr()->print(O, MAI);
   else
     llvm_unreachable("Invalid operand");
 }
 
 void SystemZInstPrinter::printFormattedRegName(const MCAsmInfo *MAI,
-                                               unsigned RegNo, raw_ostream &O) {
+                                               unsigned RegNo, raw_ostream &O,
+                                               bool UseMarkup) {
   const char *RegName = getRegisterName(RegNo);
   if (MAI->getAssemblerDialect() == AD_HLASM) {
     // Skip register prefix so that only register number is left
     assert(isalpha(RegName[0]) && isdigit(RegName[1]));
-    O << (RegName + 1);
+    O << markup("<reg:") << (RegName + 1) << markup(">");
   } else
-    O << '%' << RegName;
+    O << markup("<reg:") << '%' << RegName << markup(">");
 }
 
 void SystemZInstPrinter::printInst(const MCInst *MI, uint64_t Address,
@@ -75,90 +80,101 @@ void SystemZInstPrinter::printInst(const MCInst *MI, uint64_t Address,
 }
 
 template <unsigned N>
-static void printUImmOperand(const MCInst *MI, int OpNum, raw_ostream &O) {
+static void printUImmOperand(const MCInst *MI, int OpNum, raw_ostream &O,
+                             bool UseMarkup) {
   int64_t Value = MI->getOperand(OpNum).getImm();
   assert(isUInt<N>(Value) && "Invalid uimm argument");
+  if (UseMarkup)
+    O << "<imm:";
   O << Value;
+  if (UseMarkup)
+    O << ">";
 }
 
 template <unsigned N>
-static void printSImmOperand(const MCInst *MI, int OpNum, raw_ostream &O) {
+static void printSImmOperand(const MCInst *MI, int OpNum, raw_ostream &O,
+                             bool UseMarkup) {
   int64_t Value = MI->getOperand(OpNum).getImm();
   assert(isInt<N>(Value) && "Invalid simm argument");
+  if (UseMarkup)
+    O << "<imm:";
   O << Value;
+  if (UseMarkup)
+    O << ">";
 }
 
 void SystemZInstPrinter::printU1ImmOperand(const MCInst *MI, int OpNum,
                                            raw_ostream &O) {
-  printUImmOperand<1>(MI, OpNum, O);
+  printUImmOperand<1>(MI, OpNum, O, UseMarkup);
 }
 
 void SystemZInstPrinter::printU2ImmOperand(const MCInst *MI, int OpNum,
                                            raw_ostream &O) {
-  printUImmOperand<2>(MI, OpNum, O);
+  printUImmOperand<2>(MI, OpNum, O, UseMarkup);
 }
 
 void SystemZInstPrinter::printU3ImmOperand(const MCInst *MI, int OpNum,
                                            raw_ostream &O) {
-  printUImmOperand<3>(MI, OpNum, O);
+  printUImmOperand<3>(MI, OpNum, O, UseMarkup);
 }
 
 void SystemZInstPrinter::printU4ImmOperand(const MCInst *MI, int OpNum,
                                            raw_ostream &O) {
-  printUImmOperand<4>(MI, OpNum, O);
+  printUImmOperand<4>(MI, OpNum, O, UseMarkup);
 }
 
 void SystemZInstPrinter::printU6ImmOperand(const MCInst *MI, int OpNum,
                                            raw_ostream &O) {
-  printUImmOperand<6>(MI, OpNum, O);
+  printUImmOperand<6>(MI, OpNum, O, UseMarkup);
 }
 
 void SystemZInstPrinter::printS8ImmOperand(const MCInst *MI, int OpNum,
                                            raw_ostream &O) {
-  printSImmOperand<8>(MI, OpNum, O);
+  printSImmOperand<8>(MI, OpNum, O, UseMarkup);
 }
 
 void SystemZInstPrinter::printU8ImmOperand(const MCInst *MI, int OpNum,
                                            raw_ostream &O) {
-  printUImmOperand<8>(MI, OpNum, O);
+  printUImmOperand<8>(MI, OpNum, O, UseMarkup);
 }
 
 void SystemZInstPrinter::printU12ImmOperand(const MCInst *MI, int OpNum,
                                             raw_ostream &O) {
-  printUImmOperand<12>(MI, OpNum, O);
+  printUImmOperand<12>(MI, OpNum, O, UseMarkup);
 }
 
 void SystemZInstPrinter::printS16ImmOperand(const MCInst *MI, int OpNum,
                                             raw_ostream &O) {
-  printSImmOperand<16>(MI, OpNum, O);
+  printSImmOperand<16>(MI, OpNum, O, UseMarkup);
 }
 
 void SystemZInstPrinter::printU16ImmOperand(const MCInst *MI, int OpNum,
                                             raw_ostream &O) {
-  printUImmOperand<16>(MI, OpNum, O);
+  printUImmOperand<16>(MI, OpNum, O, UseMarkup);
 }
 
 void SystemZInstPrinter::printS32ImmOperand(const MCInst *MI, int OpNum,
                                             raw_ostream &O) {
-  printSImmOperand<32>(MI, OpNum, O);
+  printSImmOperand<32>(MI, OpNum, O, UseMarkup);
 }
 
 void SystemZInstPrinter::printU32ImmOperand(const MCInst *MI, int OpNum,
                                             raw_ostream &O) {
-  printUImmOperand<32>(MI, OpNum, O);
+  printUImmOperand<32>(MI, OpNum, O, UseMarkup);
 }
 
 void SystemZInstPrinter::printU48ImmOperand(const MCInst *MI, int OpNum,
                                             raw_ostream &O) {
-  printUImmOperand<48>(MI, OpNum, O);
+  printUImmOperand<48>(MI, OpNum, O, UseMarkup);
 }
 
 void SystemZInstPrinter::printPCRelOperand(const MCInst *MI, int OpNum,
                                            raw_ostream &O) {
   const MCOperand &MO = MI->getOperand(OpNum);
   if (MO.isImm()) {
-    O << "0x";
+    O << markup("<imm:") << "0x";
     O.write_hex(MO.getImm());
+    O << markup(">");
   } else
     MO.getExpr()->print(O, &MAI);
 }
@@ -189,19 +205,19 @@ void SystemZInstPrinter::printPCRelTLSOperand(const MCInst *MI,
 
 void SystemZInstPrinter::printOperand(const MCInst *MI, int OpNum,
                                       raw_ostream &O) {
-  printOperand(MI->getOperand(OpNum), &MAI, O);
+  printOperand(MI->getOperand(OpNum), &MAI, O, UseMarkup);
 }
 
 void SystemZInstPrinter::printBDAddrOperand(const MCInst *MI, int OpNum,
                                             raw_ostream &O) {
   printAddress(&MAI, MI->getOperand(OpNum).getReg(), MI->getOperand(OpNum + 1),
-               0, O);
+               0, O, UseMarkup);
 }
 
 void SystemZInstPrinter::printBDXAddrOperand(const MCInst *MI, int OpNum,
                                              raw_ostream &O) {
   printAddress(&MAI, MI->getOperand(OpNum).getReg(), MI->getOperand(OpNum + 1),
-               MI->getOperand(OpNum + 2).getReg(), O);
+               MI->getOperand(OpNum + 2).getReg(), O, UseMarkup);
 }
 
 void SystemZInstPrinter::printBDLAddrOperand(const MCInst *MI, int OpNum,
@@ -209,7 +225,7 @@ void SystemZInstPrinter::printBDLAddrOperand(const MCInst *MI, int OpNum,
   unsigned Base = MI->getOperand(OpNum).getReg();
   const MCOperand &DispMO = MI->getOperand(OpNum + 1);
   uint64_t Length = MI->getOperand(OpNum + 2).getImm();
-  printOperand(DispMO, &MAI, O);
+  printOperand(DispMO, &MAI, O, UseMarkup);
   O << '(' << Length;
   if (Base) {
     O << ",";
@@ -223,7 +239,7 @@ void SystemZInstPrinter::printBDRAddrOperand(const MCInst *MI, int OpNum,
   unsigned Base = MI->getOperand(OpNum).getReg();
   const MCOperand &DispMO = MI->getOperand(OpNum + 1);
   unsigned Length = MI->getOperand(OpNum + 2).getReg();
-  printOperand(DispMO, &MAI, O);
+  printOperand(DispMO, &MAI, O, UseMarkup);
   O << "(";
   printRegName(O, Length);
   if (Base) {
@@ -236,7 +252,7 @@ void SystemZInstPrinter::printBDRAddrOperand(const MCInst *MI, int OpNum,
 void SystemZInstPrinter::printBDVAddrOperand(const MCInst *MI, int OpNum,
                                              raw_ostream &O) {
   printAddress(&MAI, MI->getOperand(OpNum).getReg(), MI->getOperand(OpNum + 1),
-               MI->getOperand(OpNum + 2).getReg(), O);
+               MI->getOperand(OpNum + 2).getReg(), O, UseMarkup);
 }
 
 void SystemZInstPrinter::printCond4Operand(const MCInst *MI, int OpNum,
