@@ -33,11 +33,11 @@ public:
 
   // Print an address with the given base, displacement and index.
   static void printAddress(unsigned Base, int64_t Disp, unsigned Index,
-                           raw_ostream &O);
+                           raw_ostream &O, bool UseMarkup);
 
   // Print the given operand.
   static void printOperand(const MCOperand &MO, const MCAsmInfo *MAI,
-                           raw_ostream &O);
+                           raw_ostream &O, bool UseMarkup);
 
   // Override MCInstPrinter.
   void printRegName(raw_ostream &O, unsigned RegNo) const override;
