@@ -72,7 +72,8 @@ const char* Mips::MipsFCCToString(Mips::CondCode CC) {
 }
 
 void MipsInstPrinter::printRegName(raw_ostream &OS, unsigned RegNo) const {
-  OS << '$' << StringRef(getRegisterName(RegNo)).lower();
+  OS << markup("<reg:") << '$' << StringRef(getRegisterName(RegNo)).lower()
+     << markup(">");
 }
 
 void MipsInstPrinter::printInst(const MCInst *MI, uint64_t Address,
@@ -131,7 +132,7 @@ void MipsInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   }
 
   if (Op.isImm()) {
-    O << formatImm(Op.getImm());
+    O << markup("<imm:") << formatImm(Op.getImm()) << markup(">");
     return;
   }
 
@@ -147,7 +148,7 @@ void MipsInstPrinter::printUImm(const MCInst *MI, int opNum, raw_ostream &O) {
     Imm -= Offset;
     Imm &= (1 << Bits) - 1;
     Imm += Offset;
-    O << formatImm(Imm);
+    O << markup("<imm:") << formatImm(Imm) << markup(">");
     return;
   }
 
@@ -175,10 +176,12 @@ printMemOperand(const MCInst *MI, int opNum, raw_ostream &O) {
     break;
   }
 
+  O << markup("<mem:");
   printOperand(MI, opNum+1, O);
   O << "(";
   printOperand(MI, opNum, O);
   O << ")";
+  O << markup(">");
 }
 
 void MipsInstPrinter::
