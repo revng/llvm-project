@@ -1161,8 +1161,6 @@ class DenseMapIterator : DebugEpochBase::HandleBase {
   friend class DenseMapIterator<KeyT, ValueT, KeyInfoT, Bucket, true>;
   friend class DenseMapIterator<KeyT, ValueT, KeyInfoT, Bucket, false>;
 
-  using ConstIterator = DenseMapIterator<KeyT, ValueT, KeyInfoT, Bucket, true>;
-
 public:
   using difference_type = ptrdiff_t;
   using value_type =
@@ -1213,14 +1211,17 @@ public:
     return Ptr;
   }
 
-  bool operator==(const ConstIterator &RHS) const {
+  template <typename T>
+  bool operator==(const T &RHS) const {
     assert((!Ptr || isHandleInSync()) && "handle not in sync!");
     assert((!RHS.Ptr || RHS.isHandleInSync()) && "handle not in sync!");
     assert(getEpochAddress() == RHS.getEpochAddress() &&
            "comparing incomparable iterators!");
     return Ptr == RHS.Ptr;
   }
-  bool operator!=(const ConstIterator &RHS) const {
+
+  template <typename T>
+  bool operator!=(const T &RHS) const {
     assert((!Ptr || isHandleInSync()) && "handle not in sync!");
     assert((!RHS.Ptr || RHS.isHandleInSync()) && "handle not in sync!");
     assert(getEpochAddress() == RHS.getEpochAddress() &&
