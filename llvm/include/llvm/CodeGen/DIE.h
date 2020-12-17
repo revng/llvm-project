@@ -578,7 +578,6 @@ public:
     T &operator*() const { return *static_cast<T *>(N); }
 
     bool operator==(const iterator &X) const { return N == X.N; }
-    bool operator!=(const iterator &X) const { return N != X.N; }
   };
 
   class const_iterator
@@ -601,7 +600,6 @@ public:
     const T &operator*() const { return *static_cast<const T *>(N); }
 
     bool operator==(const const_iterator &X) const { return N == X.N; }
-    bool operator!=(const const_iterator &X) const { return N != X.N; }
   };
 
   iterator begin() {

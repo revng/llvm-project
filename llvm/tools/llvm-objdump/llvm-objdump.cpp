@@ -538,6 +538,7 @@ static bool getHidden(RelocationRef RelRef) {
 }
 
 namespace {
+
 class SourcePrinter {
 protected:
   DILineInfo OldLineInfo;

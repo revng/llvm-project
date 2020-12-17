@@ -369,11 +369,6 @@ inline bool operator==(const DWARFDie::iterator &LHS,
   return LHS.Die == RHS.Die;
 }
 
-inline bool operator!=(const DWARFDie::iterator &LHS,
-                       const DWARFDie::iterator &RHS) {
-  return !(LHS == RHS);
-}
-
 // These inline functions must follow the DWARFDie::iterator definition above
 // as they use functions from that class.
 inline DWARFDie::iterator DWARFDie::begin() const {
@@ -453,11 +448,6 @@ namespace llvm {
 inline bool operator==(const std::reverse_iterator<DWARFDie::iterator> &LHS,
                        const std::reverse_iterator<DWARFDie::iterator> &RHS) {
   return LHS.equals(RHS);
-}
-
-inline bool operator!=(const std::reverse_iterator<DWARFDie::iterator> &LHS,
-                       const std::reverse_iterator<DWARFDie::iterator> &RHS) {
-  return !(LHS == RHS);
 }
 
 inline std::reverse_iterator<DWARFDie::iterator> DWARFDie::rbegin() const {

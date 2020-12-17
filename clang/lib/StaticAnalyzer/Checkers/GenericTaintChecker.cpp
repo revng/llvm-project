@@ -101,6 +101,9 @@ private:
 
   struct FunctionData {
     FunctionData() = delete;
+    FunctionData(const FunctionDecl *FDecl, StringRef Name,
+                 std::string FullName)
+        : FDecl(FDecl), Name(Name), FullName(std::move(FullName)) {}
     FunctionData(const FunctionData &) = default;
     FunctionData(FunctionData &&) = default;
     FunctionData &operator=(const FunctionData &) = delete;
@@ -118,7 +121,7 @@ private:
       if (Name.empty() || FullName.empty())
         return None;
 
-      return FunctionData{FDecl, Name, FullName};
+      return FunctionData{FDecl, Name, std::move(FullName)};
     }
 
     bool isInScope(StringRef Scope) const {
