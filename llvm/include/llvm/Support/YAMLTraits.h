@@ -1110,16 +1110,42 @@ yamlize(IO &io, T &Val, bool, EmptyContext &Ctx) {
   char missing_yaml_trait_for_type[sizeof(MissingTrait<T>)];
 }
 
+template<typename T>
+class DefaultInserter {
+private:
+  IO &io;
+  T &Seq;
+
+public:
+  DefaultInserter(IO &io, T &Seq) : io(io), Seq(Seq) {}
+
+  auto &preflightElement(unsigned i) {
+    return SequenceTraits<T>::element(io, Seq, i);
+  }
+
+  void postflightElement(unsigned i) {};
+};
+
+template<typename T>
+auto getInserter(const T &) -> typename SequenceTraits<T>::Inserter {
+  return std::declval<typename SequenceTraits<T>::Inserter>();
+}
+
+template<typename T>
+DefaultInserter<T> getInserter(...) { return DefaultInserter<T>{}; }
+
 template <typename T, typename Context>
 std::enable_if_t<has_SequenceTraits<T>::value, void>
 yamlize(IO &io, T &Seq, bool, Context &Ctx) {
+  decltype(getInserter<T>(std::declval<T>())) I(io, Seq);
   if ( has_FlowTraits< SequenceTraits<T>>::value ) {
     unsigned incnt = io.beginFlowSequence();
     unsigned count = io.outputting() ? SequenceTraits<T>::size(io, Seq) : incnt;
     for(unsigned i=0; i < count; ++i) {
       void *SaveInfo;
       if ( io.preflightFlowElement(i, SaveInfo) ) {
-        yamlize(io, SequenceTraits<T>::element(io, Seq, i), true, Ctx);
+        yamlize(io, I.preflightElement(i), true, Ctx);
+        I.postflightElement(i);
         io.postflightFlowElement(SaveInfo);
       }
     }
@@ -1131,7 +1157,8 @@ yamlize(IO &io, T &Seq, bool, Context &Ctx) {
     for(unsigned i=0; i < count; ++i) {
       void *SaveInfo;
       if ( io.preflightElement(i, SaveInfo) ) {
-        yamlize(io, SequenceTraits<T>::element(io, Seq, i), true, Ctx);
+        yamlize(io, I.preflightElement(i), true, Ctx);
+        I.postflightElement(i);
         io.postflightElement(SaveInfo);
       }
     }
