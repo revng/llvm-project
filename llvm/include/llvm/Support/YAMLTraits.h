@@ -777,7 +777,9 @@ public:
   virtual void endFlowMapping() = 0;
 
   virtual void beginEnumScalar() = 0;
-  virtual bool matchEnumScalar(const char*, bool) = 0;
+  virtual bool matchEnumScalar(const char*,
+                               bool,
+                               QuotingType=QuotingType::None) = 0;
   virtual bool matchEnumFallback() = 0;
   virtual void endEnumScalar() = 0;
 
@@ -795,16 +797,24 @@ public:
   virtual void setAllowUnknownKeys(bool Allow);
 
   template <typename T>
-  void enumCase(T &Val, const char* Str, const T ConstVal) {
-    if ( matchEnumScalar(Str, outputting() && Val == ConstVal) ) {
+  void enumCase(T &Val,
+                const char* Str,
+                const T ConstVal,
+                QuotingType MustQuote=QuotingType::None) {
+    if ( matchEnumScalar(Str, outputting() && Val == ConstVal, MustQuote) ) {
       Val = ConstVal;
     }
   }
 
   // allow anonymous enum values to be used with LLVM_YAML_STRONG_TYPEDEF
   template <typename T>
-  void enumCase(T &Val, const char* Str, const uint32_t ConstVal) {
-    if ( matchEnumScalar(Str, outputting() && Val == static_cast<T>(ConstVal)) ) {
+  void enumCase(T &Val,
+                const char* Str,
+                const uint32_t ConstVal,
+                QuotingType MustQuote=QuotingType::None) {
+    if ( matchEnumScalar(Str,
+                         outputting() && Val == static_cast<T>(ConstVal),
+                         MustQuote) ) {
       Val = ConstVal;
     }
   }
@@ -1434,7 +1444,9 @@ private:
   void postflightFlowElement(void *) override;
   void endFlowSequence() override;
   void beginEnumScalar() override;
-  bool matchEnumScalar(const char*, bool) override;
+  bool matchEnumScalar(const char*,
+                       bool,
+                       QuotingType=QuotingType::None) override;
   bool matchEnumFallback() override;
   void endEnumScalar() override;
   bool beginBitSetScalar(bool &) override;
@@ -1590,7 +1602,9 @@ public:
   void postflightFlowElement(void *) override;
   void endFlowSequence() override;
   void beginEnumScalar() override;
-  bool matchEnumScalar(const char*, bool) override;
+  bool matchEnumScalar(const char*,
+                       bool,
+                       QuotingType=QuotingType::None) override;
   bool matchEnumFallback() override;
   void endEnumScalar() override;
   bool beginBitSetScalar(bool &) override;
