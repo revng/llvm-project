@@ -272,7 +272,7 @@ void Input::beginEnumScalar() {
   ScalarMatchFound = false;
 }
 
-bool Input::matchEnumScalar(const char *Str, bool) {
+bool Input::matchEnumScalar(const char *Str, bool, QuotingType MustQuote) {
   if (ScalarMatchFound)
     return false;
   if (ScalarHNode *SN = dyn_cast<ScalarHNode>(CurrentNode)) {
@@ -648,10 +648,11 @@ void Output::beginEnumScalar() {
   EnumerationMatchFound = false;
 }
 
-bool Output::matchEnumScalar(const char *Str, bool Match) {
+bool Output::matchEnumScalar(const char *Str, bool Match, QuotingType MustQuote) {
   if (Match && !EnumerationMatchFound) {
     newLineCheck();
-    outputUpToEndOfLine(Str);
+    StringRef String(Str);
+    scalarString(String, MustQuote);
     EnumerationMatchFound = true;
   }
   return false;
