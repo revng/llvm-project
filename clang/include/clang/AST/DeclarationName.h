@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <type_traits>
 
 namespace clang {
 
@@ -192,6 +193,14 @@ class DeclarationName {
                 "The various classes that DeclarationName::Ptr can point to"
                 " must be at least aligned to 8 bytes!");
 
+  static_assert(std::is_same<
+                    std::underlying_type_t<StoredNameKind>,
+                    std::underlying_type_t<detail::DeclarationNameExtra::ExtraKind>
+                >::value,
+                "The various enums used to compute values for NameKind should "
+                "all have the same underlying type"
+                );
+
 public:
   /// The kind of the name stored in this DeclarationName.
   /// The first 7 enumeration values are stored inline and correspond
@@ -205,15 +214,18 @@ public:
     CXXDestructorName = StoredCXXDestructorName,
     CXXConversionFunctionName = StoredCXXConversionFunctionName,
     CXXOperatorName = StoredCXXOperatorName,
-    CXXDeductionGuideName = UncommonNameKindOffset +
-                            detail::DeclarationNameExtra::CXXDeductionGuideName,
+    CXXDeductionGuideName =
+        static_cast<std::underlying_type_t<StoredNameKind>>(UncommonNameKindOffset) +
+        static_cast<std::underlying_type_t<detail::DeclarationNameExtra::ExtraKind>>(detail::DeclarationNameExtra::CXXDeductionGuideName),
     CXXLiteralOperatorName =
-        UncommonNameKindOffset +
-        detail::DeclarationNameExtra::CXXLiteralOperatorName,
-    CXXUsingDirective = UncommonNameKindOffset +
-                        detail::DeclarationNameExtra::CXXUsingDirective,
-    ObjCMultiArgSelector = UncommonNameKindOffset +
-                           detail::DeclarationNameExtra::ObjCMultiArgSelector
+        static_cast<std::underlying_type_t<StoredNameKind>>(UncommonNameKindOffset) +
+        static_cast<std::underlying_type_t<detail::DeclarationNameExtra::ExtraKind>>(detail::DeclarationNameExtra::CXXLiteralOperatorName),
+    CXXUsingDirective =
+        static_cast<std::underlying_type_t<StoredNameKind>>(UncommonNameKindOffset) +
+        static_cast<std::underlying_type_t<detail::DeclarationNameExtra::ExtraKind>>(detail::DeclarationNameExtra::CXXUsingDirective),
+    ObjCMultiArgSelector =
+        static_cast<std::underlying_type_t<StoredNameKind>>(UncommonNameKindOffset) +
+        static_cast<std::underlying_type_t<detail::DeclarationNameExtra::ExtraKind>>(detail::DeclarationNameExtra::ObjCMultiArgSelector),
   };
 
 private:
