@@ -166,12 +166,10 @@ public:
 };
 
 /// An iterator for virtual operands.
-class VirtualOperandIterator
-    : public std::iterator<std::forward_iterator_tag, VirtualUse> {
+class VirtualOperandIterator {
   friend class VirtualInstruction;
   friend class VirtualUse;
 
-  using super = std::iterator<std::forward_iterator_tag, VirtualUse>;
   using Self = VirtualOperandIterator;
 
   ScopStmt *User;
@@ -181,8 +179,11 @@ class VirtualOperandIterator
       : User(User), U(U) {}
 
 public:
-  using pointer = typename super::pointer;
-  using reference = typename super::reference;
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = VirtualUse;
+  using difference_type = std::ptrdiff_t;
+  using pointer = value_type *;
+  using reference = value_type &;
 
   inline bool operator==(const Self &that) const {
     assert(this->User == that.User);
