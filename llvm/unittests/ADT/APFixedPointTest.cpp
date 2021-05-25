@@ -223,7 +223,7 @@ void CheckIntPartMin(const FixedPointSemantics &Sema, int64_t Expected) {
   ASSERT_EQ(APFixedPoint::getMin(Sema).getIntPart(), Expected);
 }
 
-void CheckIntPartMax(const FixedPointSemantics &Sema, uint64_t Expected) {
+void CheckIntPartMax(const FixedPointSemantics &Sema, int64_t Expected) {
   ASSERT_EQ(APFixedPoint::getMax(Sema).getIntPart(), Expected);
 }
 
