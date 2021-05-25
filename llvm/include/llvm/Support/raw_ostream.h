@@ -221,6 +221,15 @@ public:
     return this->operator<<(StringRef(Str));
   }
 
+#if __cpp_char8_t
+  raw_ostream &operator<<(const char8_t *Str) {
+    // Inline fast path, particularly for constant strings where a sufficiently
+    // smart compiler will simplify strlen.
+
+    return this->operator<<(StringRef(Str));
+  }
+#endif
+
   raw_ostream &operator<<(const std::string &Str) {
     // Avoid the fast path, it would only increase code size for a marginal win.
     return write(Str.data(), Str.length());
