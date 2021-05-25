@@ -195,7 +195,7 @@ XCOFFObjectFile::getStringTableEntry(uint32_t Offset) const {
   // field; as a soft-error recovery mechanism, we treat such cases as having an
   // offset of 0.
   if (Offset < 4)
-    return StringRef(nullptr, 0);
+    return StringRef();
 
   if (StringTable.Data != nullptr && StringTable.Size > Offset)
     return (StringTable.Data + Offset);

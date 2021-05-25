@@ -18,7 +18,7 @@ TEST(DJBTest, caseFolding) {
     StringLiteral Two;
   };
 
-  static constexpr TestCase Tests[] = {
+  static TestCase Tests[] = {
       {{"ASDF"}, {"asdf"}},
       {{"qWeR"}, {"QwEr"}},
       {{"qqqqqqqqqqqqqqqqqqqq"}, {"QQQQQQQQQQQQQQQQQQQQ"}},

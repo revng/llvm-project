@@ -77,6 +77,7 @@ namespace llvm {
       return ::memcmp(Lhs,Rhs,Length);
     }
 
+  protected:
     // Constexpr version of std::strlen.
     static constexpr size_t strLen(const char *Str) {
 #if __cplusplus > 201402L
@@ -91,6 +92,13 @@ namespace llvm {
       return Str - Begin;
 #endif
     }
+
+#if __cpp_char8_t
+    // Constexpr version of std::strlen for char8_t
+    static constexpr size_t strLen(const char8_t *Str) {
+      return std::char_traits<char8_t>::length(Str);
+    }
+#endif
 
   public:
     /// @name Constructors
@@ -107,9 +115,21 @@ namespace llvm {
     /*implicit*/ constexpr StringRef(const char *Str)
         : Data(Str), Length(Str ? strLen(Str) : 0) {}
 
+#if __cpp_char8_t
+    /// Construct a string ref from a cstring.
+    /*implicit*/ StringRef(const char8_t *Str)
+        : StringRef(reinterpret_cast<const char *>(Str)) {}
+#endif
+
     /// Construct a string ref from a pointer and length.
     /*implicit*/ constexpr StringRef(const char *data, size_t length)
         : Data(data), Length(length) {}
+
+#if __cpp_char8_t
+    /// Construct a string ref from a pointer and length.
+    /*implicit*/ StringRef(const char8_t *data, size_t length)
+        : StringRef(reinterpret_cast<const char *>(data), length) {}
+#endif
 
     /// Construct a string ref from an std::string.
     /*implicit*/ StringRef(const std::string &Str)
@@ -912,18 +932,37 @@ namespace llvm {
     constexpr StringLiteral(const char *Str, size_t N) : StringRef(Str, N) {
     }
 
+#if __cpp_char8_t
+    StringLiteral(const char8_t *Str, size_t N) : StringRef(Str, N) {
+    }
+#endif
+
   public:
     template <size_t N>
     constexpr StringLiteral(const char (&Str)[N])
 #if defined(__clang__) && __has_attribute(enable_if)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wgcc-compat"
-        __attribute((enable_if(__builtin_strlen(Str) == N - 1,
+        __attribute((enable_if(strLen(Str) == N - 1,
                                "invalid string literal")))
 #pragma clang diagnostic pop
 #endif
         : StringRef(Str, N - 1) {
     }
+
+#if __cpp_char8_t
+    template <size_t N>
+    StringLiteral(const char8_t (&Str)[N])
+#if defined(__clang__) && __has_attribute(enable_if)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgcc-compat"
+        __attribute((enable_if(strLen(Str) == N - 1,
+                               "invalid string literal")))
+#pragma clang diagnostic pop
+#endif
+        : StringRef(Str, N - 1) {
+    }
+#endif
 
     // Explicit construction for strings like "foo\0bar".
     template <size_t N>
