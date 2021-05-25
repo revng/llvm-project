@@ -174,12 +174,12 @@ TEST(JSONTest, Parse) {
   Compare(R"("\"\\\b\f\n\r\t")", "\"\\\b\f\n\r\t");
   Compare(R"("\u0000")", llvm::StringRef("\0", 1));
   Compare("\"\x7f\"", "\x7f");
-  Compare(R"("\ud801\udc37")", u8"\U00010437"); // UTF16 surrogate pair escape.
-  Compare("\"\xE2\x82\xAC\xF0\x9D\x84\x9E\"", u8"\u20ac\U0001d11e"); // UTF8
+  Compare(R"("\ud801\udc37")", reinterpret_cast<const char *>(u8"\U00010437")); // UTF16 surrogate pair escape.
+  Compare("\"\xE2\x82\xAC\xF0\x9D\x84\x9E\"", reinterpret_cast<const char *>(u8"\u20ac\U0001d11e")); // UTF8
   Compare(
       R"("LoneLeading=\ud801, LoneTrailing=\udc01, LeadingLeadingTrailing=\ud801\ud801\udc37")",
-      u8"LoneLeading=\ufffd, LoneTrailing=\ufffd, "
-      u8"LeadingLeadingTrailing=\ufffd\U00010437"); // Invalid unicode.
+      reinterpret_cast<const char *>(u8"LoneLeading=\ufffd, LoneTrailing=\ufffd, "
+                                     u8"LeadingLeadingTrailing=\ufffd\U00010437")); // Invalid unicode.
 
   Compare(R"({"":0,"":0})", Object{{"", 0}});
   Compare(R"({"obj":{},"arr":[]})", Object{{"obj", Object{}}, {"arr", {}}});
