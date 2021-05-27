@@ -135,8 +135,9 @@ public:
   template <bool InverseEdge, template <typename> class View> VectRet getChildren(NodePtr N) const {
     using DirectedNodeT =
         std::conditional_t<InverseEdge, Inverse<View<NodePtr>>, View<NodePtr>>;
-    auto R = children<DirectedNodeT>(N);
-    VectRet Res = VectRet(detail::reverse_if<!InverseEdge>(R));
+    VectRet Res = VectRet(children<DirectedNodeT>(N));
+    if (not InverseEdge)
+      std::reverse(Res.begin(), Res.end());
 
     // Remove nullptr children for clang.
     llvm::erase_value(Res, nullptr);
