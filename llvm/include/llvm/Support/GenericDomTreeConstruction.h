@@ -115,8 +115,10 @@ struct SemiNCAInfoOnView {
   static SmallVector<NodePtr, 8> getChildren(NodePtr N) {
     using DirectedNodeT =
         std::conditional_t<Inversed, Inverse<View<NodePtr>>, View<NodePtr>>;
-    auto R = children<DirectedNodeT>(N);
-    SmallVector<NodePtr, 8> Res(detail::reverse_if<!Inversed>(R));
+    using VectRet = SmallVector<NodePtr, 8>;
+    VectRet Res = VectRet(children<DirectedNodeT>(N));
+    if (not Inversed)
+      std::reverse(Res.begin(), Res.end());
 
     // Remove nullptr children for clang.
     llvm::erase_value(Res, nullptr);
