@@ -15,6 +15,10 @@ function(llvm_create_cross_target project_name target_name toolchain buildtype)
   if (EXISTS ${LLVM_MAIN_SRC_DIR}/cmake/platforms/${toolchain}.cmake)
     set(CROSS_TOOLCHAIN_FLAGS_INIT
       -DCMAKE_TOOLCHAIN_FILE=\"${LLVM_MAIN_SRC_DIR}/cmake/platforms/${toolchain}.cmake\")
+  elseif(WIN32_TARGET_REVNG AND "${toolchain}" STREQUAL "")
+    set(CROSS_TOOLCHAIN_FLAGS_INIT
+      -DCMAKE_TOOLCHAIN_FILE=\"${LLVM_MAIN_SRC_DIR}/cmake/platforms/win32-revng.cmake\"
+    )
   else()
     set(CROSS_TOOLCHAIN_FLAGS_INIT
       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
