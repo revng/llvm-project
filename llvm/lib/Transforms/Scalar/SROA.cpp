@@ -115,6 +115,12 @@ STATISTIC(NumVectorized, "Number of vectorized aggregates");
 static cl::opt<bool> SROAStrictInbounds("sroa-strict-inbounds", cl::init(false),
                                         cl::Hidden);
 
+/// Hidden option to experiment with aggressive speculation on transitive chains
+/// of PHIs and SelectInsts
+static cl::opt<bool> SROAAggressivePHISelects("sroa-aggressive-phis-selects",
+                                              cl::init(false),
+                                              cl::Hidden);
+
 namespace {
 
 /// A custom IRBuilder inserter which prefixes all names, but only in
@@ -1189,7 +1195,7 @@ findCommonType(AllocaSlices::const_iterator B, AllocaSlices::const_iterator E,
 ///
 /// FIXME: This should be hoisted into a generic utility, likely in
 /// Transforms/Util/Local.h
-static bool isSafePHIToSpeculate(PHINode &PN) {
+static bool isSafePHIToSpeculate(PHINode &PN, const SmallPtrSet<Instruction *, 8> &GoodPHIOrSelects) {
   const DataLayout &DL = PN.getModule()->getDataLayout();
 
   // For now, we can only do this promotion if the load is in the same block
@@ -1202,6 +1208,9 @@ static bool isSafePHIToSpeculate(PHINode &PN) {
   APInt MaxSize(APWidth, 0);
   bool HaveLoad = false;
   for (User *U : PN.users()) {
+    if (GoodPHIOrSelects.count(dyn_cast<Instruction>(U)))
+      continue;
+
     LoadInst *LI = dyn_cast<LoadInst>(U);
     if (!LI || !LI->isSimple())
       return false;
@@ -1324,12 +1333,15 @@ static void speculatePHINodeLoads(PHINode &PN) {
 ///
 /// We can do this to a select if its only uses are loads and if the operand
 /// to the select can be loaded unconditionally.
-static bool isSafeSelectToSpeculate(SelectInst &SI) {
+static bool isSafeSelectToSpeculate(SelectInst &SI, const SmallPtrSet<Instruction *, 8> &GoodPHIOrSelects) {
   Value *TValue = SI.getTrueValue();
   Value *FValue = SI.getFalseValue();
   const DataLayout &DL = SI.getModule()->getDataLayout();
 
   for (User *U : SI.users()) {
+    if (GoodPHIOrSelects.count(dyn_cast<Instruction>(U)))
+      continue;
+
     LoadInst *LI = dyn_cast<LoadInst>(U);
     if (!LI || !LI->isSimple())
       return false;
@@ -4346,21 +4358,54 @@ AllocaInst *SROA::rewritePartition(AllocaInst &AI, AllocaSlices &AS,
 
   // Now that we've processed all the slices in the new partition, check if any
   // PHIs or Selects would block promotion.
-  for (PHINode *PHI : PHIUsers)
-    if (!isSafePHIToSpeculate(*PHI)) {
-      Promotable = false;
-      PHIUsers.clear();
-      SelectUsers.clear();
-      break;
-    }
+  if (SROAAggressivePHISelects.getNumOccurrences()
+      and SROAAggressivePHISelects.getValue()) {
 
-  for (SelectInst *Sel : SelectUsers)
-    if (!isSafeSelectToSpeculate(*Sel)) {
+    SmallPtrSet<Instruction *, 8> GoodPHIOrSelects;
+    bool FoundPromotable = true;
+    do {
+      FoundPromotable = false;
+      for (PHINode *PHI : PHIUsers) {
+        if (GoodPHIOrSelects.count(PHI))
+            continue;
+        if (isSafePHIToSpeculate(*PHI, GoodPHIOrSelects)) {
+          FoundPromotable = true;
+          GoodPHIOrSelects.insert(PHI);
+        }
+      }
+
+      for (SelectInst *Sel : SelectUsers) {
+        if (GoodPHIOrSelects.count(Sel))
+            continue;
+        if (isSafeSelectToSpeculate(*Sel, GoodPHIOrSelects)) {
+          FoundPromotable = true;
+          GoodPHIOrSelects.insert(Sel);
+        }
+      }
+    } while (FoundPromotable);
+
+    if (GoodPHIOrSelects.size() < (SelectUsers.size() + PHIUsers.size()))
       Promotable = false;
-      PHIUsers.clear();
-      SelectUsers.clear();
-      break;
-    }
+
+  } else {
+
+    for (PHINode *PHI : PHIUsers)
+      if (!isSafePHIToSpeculate(*PHI, {})) {
+        Promotable = false;
+        PHIUsers.clear();
+        SelectUsers.clear();
+        break;
+      }
+
+    for (SelectInst *Sel : SelectUsers)
+      if (!isSafeSelectToSpeculate(*Sel, {})) {
+        Promotable = false;
+        PHIUsers.clear();
+        SelectUsers.clear();
+        break;
+      }
+
+  }
 
   if (Promotable) {
     for (Use *U : AS.getDeadUsesIfPromotable()) {
