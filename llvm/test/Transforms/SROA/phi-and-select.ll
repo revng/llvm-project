@@ -694,3 +694,45 @@ define i8 @volatile_select(i8* %p, i1 %b) {
   %v2 = load i8, i8* %px
   ret i8 %v2
 }
+
+declare i32 @initx()
+
+declare i32 @inity()
+
+declare i32 @getcondition()
+
+define i32 @selectphichain() {
+; CHECK-LABEL: @selectphichain(
+  %1 = alloca i32, align 16
+; CHECK: %1 = alloca i32, align 16
+  %2 = alloca i32, align 16
+; CHECK:  %2 = alloca i32, align 16
+  %3 = call i32 @initx()
+; CHECK: %3 = call i32 @initx()
+  store i32 %3, i32* %1, align 16
+; CHECK: store i32 %3, i32* %1, align 16
+  %4 = call i32 @inity()
+; CHECK: %4 = call i32 @inity()
+  store i32 %4, i32* %2, align 16
+; CHECK: store i32 %4, i32* %2, align 16
+  %5 = call i32 @getcondition()
+  %6 = icmp sgt i32 %5, 3
+  br i1 %6, label %7, label %10
+
+7:                                                ; preds = %0
+  %8 = call i32 @getcondition()
+  %9 = icmp sgt i32 %8, 8
+  %s = select i1 %9, i32* %1, i32* %2
+; CHECK: %s = select i1 %9, i32* %1, i32* %2
+  br label %11
+
+10:                                               ; preds = %0
+  br label %11
+
+11:                                               ; preds = %10, %7
+  %thephi = phi i32* [ %s, %7 ], [ %1, %10 ]
+; CHECK: %thephi = phi i32* [ %s, %7 ], [ %1, %10 ]
+  %12 = load i32, i32* %thephi, align 4
+; CHECK: %12 = load i32, i32* %thephi, align 4
+  ret i32 %12
+}
