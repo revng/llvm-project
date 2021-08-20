@@ -10,9 +10,7 @@ if( NOT LLVM_REQUIRES_RTTI )
   endif()
 endif()
 
-if(WIN32 OR CYGWIN)
-  set(LLVM_LINK_COMPONENTS Core)
-endif()
+set(LLVM_LINK_COMPONENTS Core Support)
 
 add_llvm_library( BugpointPasses MODULE BUILDTREE_ONLY
   TestPasses.cpp
