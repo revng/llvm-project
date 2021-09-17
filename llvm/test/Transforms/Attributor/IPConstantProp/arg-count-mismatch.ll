@@ -70,10 +70,16 @@ define internal i16 @bar(i16 %p1, i16 %p2) {
 }
 
 define dso_local i16 @foo2(i16 %a) {
-; CHECK-LABEL: define {{[^@]+}}@foo2
-; CHECK-SAME: (i16 [[A:%.*]]) {
-; CHECK-NEXT:    [[CALL:%.*]] = call i16 bitcast (i16 (i16, i16)* @bar2 to i16 (i16)*)(i16 [[A]])
-; CHECK-NEXT:    ret i16 [[CALL]]
+; NOT_CGSCC_NPM-LABEL: define {{[^@]+}}@foo2
+; NOT_CGSCC_NPM-SAME: (i16 [[A:%.*]]) {
+; NOT_CGSCC_NPM-NEXT:    [[CALL:%.*]] = call i16 bitcast (i16 (i16, i16)* @bar2 to i16 (i16)*)(i16 [[A]])
+; NOT_CGSCC_NPM-NEXT:    ret i16 [[CALL]]
+;
+; IS__CGSCC_NPM: Function Attrs: nofree norecurse nosync nounwind readnone
+; IS__CGSCC_NPM-LABEL: define {{[^@]+}}@foo2
+; IS__CGSCC_NPM-SAME: (i16 [[A:%.*]]) [[ATTR1:#.*]] {
+; IS__CGSCC_NPM-NEXT:    [[CALL:%.*]] = call i16 bitcast (i16 (i16, i16)* @bar2 to i16 (i16)*)(i16 [[A]])
+; IS__CGSCC_NPM-NEXT:    ret i16 [[CALL]]
 ;
   %call = call i16 bitcast (i16 (i16, i16) * @bar2 to i16 (i16) *)(i16 %a)
   ret i16 %call
@@ -103,11 +109,18 @@ define internal i16 @bar2(i16 %p1, i16 %p2) {
 ; been provided),
 
 define dso_local i16 @vararg_tests(i16 %a) {
-; CHECK-LABEL: define {{[^@]+}}@vararg_tests
-; CHECK-SAME: (i16 [[A:%.*]]) {
-; CHECK-NEXT:    [[CALL2:%.*]] = call i16 bitcast (i16 (i16, i16, ...)* @vararg_no_prop to i16 (i16)*)(i16 noundef 7)
-; CHECK-NEXT:    [[ADD:%.*]] = add i16 7, [[CALL2]]
-; CHECK-NEXT:    ret i16 [[ADD]]
+; NOT_CGSCC_NPM-LABEL: define {{[^@]+}}@vararg_tests
+; NOT_CGSCC_NPM-SAME: (i16 [[A:%.*]]) {
+; NOT_CGSCC_NPM-NEXT:    [[CALL2:%.*]] = call i16 bitcast (i16 (i16, i16, ...)* @vararg_no_prop to i16 (i16)*)(i16 noundef 7)
+; NOT_CGSCC_NPM-NEXT:    [[ADD:%.*]] = add i16 7, [[CALL2]]
+; NOT_CGSCC_NPM-NEXT:    ret i16 [[ADD]]
+;
+; IS__CGSCC_NPM: Function Attrs: nofree norecurse nosync nounwind readnone
+; IS__CGSCC_NPM-LABEL: define {{[^@]+}}@vararg_tests
+; IS__CGSCC_NPM-SAME: (i16 [[A:%.*]]) [[ATTR1]] {
+; IS__CGSCC_NPM-NEXT:    [[CALL2:%.*]] = call i16 bitcast (i16 (i16, i16, ...)* @vararg_no_prop to i16 (i16)*)(i16 noundef 7)
+; IS__CGSCC_NPM-NEXT:    [[ADD:%.*]] = add i16 7, [[CALL2]]
+; IS__CGSCC_NPM-NEXT:    ret i16 [[ADD]]
 ;
   %call1 = call i16 (i16, ...) @vararg_prop(i16 7, i16 8, i16 %a)
   %call2 = call i16 bitcast (i16 (i16, i16, ...) * @vararg_no_prop to i16 (i16) *) (i16 7)
