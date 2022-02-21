@@ -971,13 +971,13 @@ void ByteCodeExecutor::execute(
 
       // Handle the case where the operation has inferred types.
       if (hasInferredTypes) {
-        InferTypeOpInterface::Concept *concept =
+        InferTypeOpInterface::Concept *inferInterface =
             state.name.getAbstractOperation()
                 ->getInterface<InferTypeOpInterface>();
 
         // TODO: Handle failure.
         SmallVector<Type, 2> inferredTypes;
-        if (failed(concept->inferReturnTypes(
+        if (failed(inferInterface->inferReturnTypes(
                 state.getContext(), state.location, state.operands,
                 state.attributes.getDictionary(state.getContext()),
                 state.regions, inferredTypes)))
