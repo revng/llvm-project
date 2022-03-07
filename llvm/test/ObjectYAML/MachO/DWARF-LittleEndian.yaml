@@ -261,7 +261,7 @@ DWARF:
     - long long int
     - __absvdi2
     - a
-    - N
+    - 'N'
     - t
   debug_abbrev:
     - Table:
@@ -373,7 +373,7 @@ DWARF:
 #CHECK:     - long long int
 #CHECK:     - __absvdi2
 #CHECK:     - a
-#CHECK:     - N
+#CHECK:     - 'N'
 #CHECK:     - t
 #CHECK:   debug_abbrev:    
 #CHECK:     - Code:            0x1
