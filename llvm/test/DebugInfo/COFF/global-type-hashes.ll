@@ -227,7 +227,7 @@ attributes #2 = { noinline nounwind optnone "correctly-rounded-divide-sqrt-fp-ma
 ; YAML:               Attrs:           3
 ; YAML:               Type:            116
 ; YAML:               FieldOffset:     4
-; YAML:               Name:            Y
+; YAML:               Name:            'Y'
 ; YAML:           - Kind:            LF_ONEMETHOD
 ; YAML:             OneMethod:
 ; YAML:               Type:            4103
