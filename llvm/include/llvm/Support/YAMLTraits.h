@@ -641,7 +641,12 @@ inline bool isNull(StringRef S) {
 inline bool isBool(StringRef S) {
   // FIXME: using parseBool is causing multiple tests to fail.
   return S.equals("true") || S.equals("True") || S.equals("TRUE") ||
-         S.equals("false") || S.equals("False") || S.equals("FALSE");
+         S.equals("yes") || S.equals("Yes") || S.equals ("YES") ||
+         S.equals("on") || S.equals("On") || S.equals ("ON") ||
+         S.equals("false") || S.equals("False") || S.equals("FALSE") ||
+         S.equals("no") || S.equals("No") || S.equals("NO") ||
+         S.equals("off") || S.equals("Off") || S.equals("OFF") ||
+         S.equals("y") || S.equals("Y") || S.equals("n") || S.equals("N");
 }
 
 // 5.1. Character Set
