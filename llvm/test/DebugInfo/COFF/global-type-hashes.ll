@@ -240,7 +240,7 @@ attributes #3 = { mustprogress noinline nounwind optnone "frame-pointer"="none" 
 ; YAML:               Attrs:           3
 ; YAML:               Type:            116
 ; YAML:               FieldOffset:     4
-; YAML:               Name:            Y
+; YAML:               Name:            'Y'
 ; YAML:           - Kind:            LF_ONEMETHOD
 ; YAML:             OneMethod:
 ; YAML:               Type:            4103

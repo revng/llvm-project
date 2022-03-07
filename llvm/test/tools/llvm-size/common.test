@@ -34,7 +34,7 @@ Sections:
   - Name: .text
     Type: SHT_PROGBITS
 Symbols:
-  - Name:  y
+  - Name:  'y'
     Type:  STT_OBJECT
     Size:  4
     Index: SHN_COMMON
