@@ -7,10 +7,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "PrettyFunctionDumper.h"
-#include "LinePrinter.h"
 #include "PrettyBuiltinDumper.h"
 
 #include "llvm/DebugInfo/PDB/IPDBSession.h"
+#include "llvm/DebugInfo/PDB/Native/LinePrinter.h"
 #include "llvm/DebugInfo/PDB/PDBExtras.h"
 #include "llvm/DebugInfo/PDB/PDBSymbolData.h"
 #include "llvm/DebugInfo/PDB/PDBSymbolFunc.h"
