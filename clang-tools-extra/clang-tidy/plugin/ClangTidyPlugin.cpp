@@ -36,6 +36,8 @@ class ClangTidyPluginAction : public PluginASTAction {
   };
 
 public:
+  virtual ActionType getActionType() { return AddBeforeMainAction; }
+
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &Compiler,
                                                  StringRef File) override {
     // Create and set diagnostics engine
