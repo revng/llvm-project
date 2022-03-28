@@ -1,4 +1,5 @@
 add_clang_library(clangTidyPlugin
+  SHARED
   ClangTidyPlugin.cpp
 
   LINK_LIBS
