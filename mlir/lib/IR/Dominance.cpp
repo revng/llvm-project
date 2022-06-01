@@ -20,9 +20,9 @@
 using namespace mlir;
 using namespace mlir::detail;
 
-template class llvm::DominatorTreeBase<Block, /*IsPostDom=*/false>;
-template class llvm::DominatorTreeBase<Block, /*IsPostDom=*/true>;
-template class llvm::DomTreeNodeBase<Block>;
+template class llvm::DominatorTreeOnView<Block, /*IsPostDom=*/false, llvm::DTIdentityView>;
+template class llvm::DominatorTreeOnView<Block, /*IsPostDom=*/true, llvm::DTIdentityView>;
+template class llvm::DomTreeNodeOnView<Block, llvm::DTIdentityView>;
 
 /// Return true if the region with the given index inside the operation
 /// has SSA dominance.
