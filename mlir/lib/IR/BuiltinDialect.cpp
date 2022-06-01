@@ -303,7 +303,7 @@ UnrealizedConversionCastOp::fold(ArrayRef<Attribute> attrOperands,
   // operation.
   Value firstInput = operands.front();
   auto inputOp = firstInput.getDefiningOp<UnrealizedConversionCastOp>();
-  if (!inputOp || inputOp.getResults() != operands ||
+  if (!inputOp || inputOp.getResults().operator!=(operands) ||
       inputOp.getOperandTypes() != results.getTypes())
     return failure();
 
