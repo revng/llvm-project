@@ -22,7 +22,7 @@ namespace mlir {
 /// raw_ostream subclass that simplifies indention a sequence of code.
 class raw_indented_ostream : public raw_ostream {
 public:
-  explicit raw_indented_ostream(llvm::raw_ostream &os) : os(os) {
+  explicit raw_indented_ostream(llvm::raw_ostream &os, int indentSize = 2) : indentSize(indentSize), os(os) {
     SetUnbuffered();
   }
 
@@ -90,7 +90,7 @@ private:
   uint64_t current_pos() const override { return os.tell(); }
 
   /// Constant indent added/removed.
-  static constexpr int indentSize = 2;
+  int indentSize;
 
   // Tracker for current indentation.
   int currentIndent = 0;
