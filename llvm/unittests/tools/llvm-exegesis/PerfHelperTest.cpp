@@ -19,7 +19,7 @@ namespace {
 using ::testing::IsEmpty;
 using ::testing::Not;
 
-TEST(PerfHelperTest, FunctionalTest) {
+TEST(PerfHelperTest, DISABLED_FunctionalTest) {
 #ifdef HAVE_LIBPFM
   ASSERT_FALSE(pfmInitialize());
   PerfEvent Event("CYCLES:u");
