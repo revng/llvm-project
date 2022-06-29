@@ -257,7 +257,7 @@ void checkEventualResultWithTimeout(VerifyingConsumer &TestConsumer) {
 }
 } // namespace
 
-TEST(DirectoryWatcherTest, InitialScanSync) {
+TEST(DirectoryWatcherTest, DISABLED_InitialScanSync) {
   DirectoryWatcherTestFixture fixture;
 
   fixture.addFile("a");
@@ -290,7 +290,7 @@ TEST(DirectoryWatcherTest, InitialScanSync) {
   checkEventualResultWithTimeout(TestConsumer);
 }
 
-TEST(DirectoryWatcherTest, InitialScanAsync) {
+TEST(DirectoryWatcherTest, DISABLED_InitialScanAsync) {
   DirectoryWatcherTestFixture fixture;
 
   fixture.addFile("a");
@@ -323,7 +323,7 @@ TEST(DirectoryWatcherTest, InitialScanAsync) {
   checkEventualResultWithTimeout(TestConsumer);
 }
 
-TEST(DirectoryWatcherTest, AddFiles) {
+TEST(DirectoryWatcherTest, DISABLED_AddFiles) {
   DirectoryWatcherTestFixture fixture;
 
   VerifyingConsumer TestConsumer{
@@ -349,7 +349,7 @@ TEST(DirectoryWatcherTest, AddFiles) {
   checkEventualResultWithTimeout(TestConsumer);
 }
 
-TEST(DirectoryWatcherTest, ModifyFile) {
+TEST(DirectoryWatcherTest, DISABLED_ModifyFile) {
   DirectoryWatcherTestFixture fixture;
 
   fixture.addFile("a");
@@ -381,7 +381,7 @@ TEST(DirectoryWatcherTest, ModifyFile) {
   checkEventualResultWithTimeout(TestConsumer);
 }
 
-TEST(DirectoryWatcherTest, DeleteFile) {
+TEST(DirectoryWatcherTest, DISABLED_DeleteFile) {
   DirectoryWatcherTestFixture fixture;
 
   fixture.addFile("a");
@@ -406,7 +406,7 @@ TEST(DirectoryWatcherTest, DeleteFile) {
   checkEventualResultWithTimeout(TestConsumer);
 }
 
-TEST(DirectoryWatcherTest, DeleteWatchedDir) {
+TEST(DirectoryWatcherTest, DISABLED_DeleteWatchedDir) {
   DirectoryWatcherTestFixture fixture;
 
   VerifyingConsumer TestConsumer{
@@ -429,7 +429,7 @@ TEST(DirectoryWatcherTest, DeleteWatchedDir) {
   checkEventualResultWithTimeout(TestConsumer);
 }
 
-TEST(DirectoryWatcherTest, InvalidatedWatcher) {
+TEST(DirectoryWatcherTest, DISABLED_InvalidatedWatcher) {
   DirectoryWatcherTestFixture fixture;
 
   VerifyingConsumer TestConsumer{
@@ -450,7 +450,7 @@ TEST(DirectoryWatcherTest, InvalidatedWatcher) {
   checkEventualResultWithTimeout(TestConsumer);
 }
 
-TEST(DirectoryWatcherTest, InvalidatedWatcherAsync) {
+TEST(DirectoryWatcherTest, DISABLED_InvalidatedWatcherAsync) {
   DirectoryWatcherTestFixture fixture;
   fixture.addFile("a");
 
