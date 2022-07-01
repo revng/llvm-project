@@ -243,13 +243,6 @@ Type *TypeMapTy::get(Type *Ty, SmallPtrSet<StructType *, 8> &Visited) {
   bool IsUniqued = !isa<StructType>(Ty) || cast<StructType>(Ty)->isLiteral();
 
   if (!IsUniqued) {
-#ifndef NDEBUG
-    for (auto &Pair : MappedTypes) {
-      assert(!(Pair.first != Ty && Pair.second == Ty) &&
-             "mapping to a source type");
-    }
-#endif
-
     if (!Visited.insert(cast<StructType>(Ty)).second) {
       StructType *DTy = StructType::create(Ty->getContext());
       return *Entry = DTy;
