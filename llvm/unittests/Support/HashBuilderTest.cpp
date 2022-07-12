@@ -132,6 +132,7 @@ void addHash(llvm::HashBuilderImpl<HasherT, Endianness> &HBuilder,
 struct StructWithoutCopyOrMove {
   int I;
   StructWithoutCopyOrMove() = default;
+  StructWithoutCopyOrMove(int TheInt) : I(TheInt) {}
   StructWithoutCopyOrMove(const StructWithoutCopyOrMove &) = delete;
   StructWithoutCopyOrMove &operator=(const StructWithoutCopyOrMove &) = delete;
 
