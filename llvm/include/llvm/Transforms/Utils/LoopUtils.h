@@ -420,6 +420,9 @@ bool cannotBeMaxInLoop(const SCEV *S, const Loop *L, ScalarEvolution &SE,
 bool cannotBeMinInLoop(const SCEV *S, const Loop *L, ScalarEvolution &SE,
                        bool Signed);
 
+/// TODO: This will be dropped when we are rebased onto newer version of LLVM.
+bool isValidRewrite(ScalarEvolution *SE, Value *FromVal, Value *ToVal);
+
 enum ReplaceExitVal { NeverRepl, OnlyCheapRepl, NoHardUse, AlwaysRepl };
 
 /// If the final value of any expressions that are recurrent in the loop can

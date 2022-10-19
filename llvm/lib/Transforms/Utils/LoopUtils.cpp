@@ -1149,7 +1149,7 @@ bool llvm::cannotBeMaxInLoop(const SCEV *S, const Loop *L, ScalarEvolution &SE,
 // original value. SCEV guarantees that it produces the same value, but the way
 // it is produced may be illegal IR.  Ideally, this function will only be
 // called for verification.
-static bool isValidRewrite(ScalarEvolution *SE, Value *FromVal, Value *ToVal) {
+bool llvm::isValidRewrite(ScalarEvolution *SE, Value *FromVal, Value *ToVal) {
   // If an SCEV expression subsumed multiple pointers, its expansion could
   // reassociate the GEP changing the base pointer. This is illegal because the
   // final address produced by a GEP chain must be inbounds relative to its
