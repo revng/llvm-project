@@ -1107,8 +1107,8 @@ private:
 /// common dominator for the incoming blocks. A nullptr can be returned if no
 /// viable location is found: it may happen if User is a PHI and Def only comes
 /// to this PHI from unreachable blocks.
-static Instruction *getInsertPointForUses(Instruction *User, Value *Def,
-                                          DominatorTree *DT, LoopInfo *LI) {
+Instruction *llvm::getInsertPointForUses(Instruction *User, Value *Def,
+                                         DominatorTree *DT, LoopInfo *LI) {
   PHINode *PHI = dyn_cast<PHINode>(User);
   if (!PHI)
     return User;
