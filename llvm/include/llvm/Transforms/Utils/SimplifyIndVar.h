@@ -22,12 +22,14 @@ class WeakTrackingVH;
 template <typename T> class SmallVectorImpl;
 class CastInst;
 class DominatorTree;
+class Instruction;
 class Loop;
 class LoopInfo;
 class PHINode;
 class ScalarEvolution;
 class SCEVExpander;
 class TargetTransformInfo;
+class Value;
 
 /// Interface for visiting interesting IV users that are recognized but not
 /// simplified by this utility.
@@ -57,6 +59,10 @@ bool simplifyUsersOfIV(PHINode *CurrIV, ScalarEvolution *SE, DominatorTree *DT,
 bool simplifyLoopIVs(Loop *L, ScalarEvolution *SE, DominatorTree *DT,
                      LoopInfo *LI, const TargetTransformInfo *TTI,
                      SmallVectorImpl<WeakTrackingVH> &Dead);
+
+/// We make it public so it can be used in our LLVM out-of-tree Passes.
+Instruction *getInsertPointForUses(Instruction *User, Value *Def,
+                                   DominatorTree *DT, LoopInfo *LI);
 
 /// Collect information about induction variables that are used by sign/zero
 /// extend operations. This information is recorded by CollectExtend and provides
