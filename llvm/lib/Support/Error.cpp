@@ -172,3 +172,7 @@ LLVMErrorTypeId LLVMGetStringErrorTypeId() {
 LLVMErrorRef LLVMCreateStringError(const char *ErrMsg) {
   return wrap(make_error<StringError>(ErrMsg, inconvertibleErrorCode()));
 }
+
+ExitOnError::ExitOnError(std::string Banner, int DefaultErrorExitCode)
+      : Banner(std::move(Banner)),
+        GetExitCode([=](const Error &) { return DefaultErrorExitCode; }) {}
