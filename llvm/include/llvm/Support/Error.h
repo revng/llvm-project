@@ -1306,9 +1306,7 @@ Error createFileError(const Twine &F, ErrorSuccess) = delete;
 class ExitOnError {
 public:
   /// Create an error on exit helper.
-  ExitOnError(std::string Banner = "", int DefaultErrorExitCode = 1)
-      : Banner(std::move(Banner)),
-        GetExitCode([=](const Error &) { return DefaultErrorExitCode; }) {}
+  ExitOnError(std::string Banner = "", int DefaultErrorExitCode = 1);
 
   /// Set the banner string for any errors caught by operator().
   void setBanner(std::string Banner) { this->Banner = std::move(Banner); }
