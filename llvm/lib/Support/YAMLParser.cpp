@@ -1826,13 +1826,12 @@ bool Scanner::fetchMoreTokens() {
   StringRef FirstChar(Current, 1);
   if (!(isBlankOrBreak(Current)
         || FirstChar.find_first_of("-?:,[]{}#&*!|>'\"%@`") != StringRef::npos)
-      || (*Current == '-' && !isBlankOrBreak(Current + 1))
-      || (!FlowLevel && (*Current == '?' || *Current == ':')
-          && isBlankOrBreak(Current + 1))
-      || (!FlowLevel && *Current == ':'
-                      && Current + 2 < End
-                      && *(Current + 1) == ':'
-                      && !isBlankOrBreak(Current + 2)))
+      || (FirstChar.find_first_of("?:-") != StringRef::npos
+          && !isBlankOrBreak(Current + 1))
+      || (*Current == ':'
+          && Current + 2 < End
+          && *(Current + 1) == ':'
+          && !isBlankOrBreak(Current + 2)))
     return scanPlainScalar();
 
   setError("Unrecognized character while tokenizing.", Current);
