@@ -114,11 +114,15 @@ static bool runIPSCCP(
     function_ref<AnalysisResultsForFn(Function &)> getAnalysis,
     bool IsFuncSpecEnabled) {
   SCCPSolver Solver(DL, GetTLI, M.getContext());
+  auto T = make_task_on_set(make_address_range(M), "LLVM SCC Passes");
+
   FunctionSpecializer Specializer(Solver, M, FAM, GetTLI, GetTTI, GetAC);
 
   // Loop over all functions, marking arguments to those with their addresses
   // taken or that are external as overdefined.
   for (Function &F : M) {
+    T.advance(&F, F.getName());
+
     if (F.isDeclaration())
       continue;
 

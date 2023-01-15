@@ -46,6 +46,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PassInstrumentation.h"
 #include "llvm/IR/PassManagerInternal.h"
+#include "llvm/Support/Progress.h"
 #include "llvm/Support/TimeProfiler.h"
 #include "llvm/Support/TypeName.h"
 #include <cassert>
@@ -59,6 +60,11 @@
 #include <vector>
 
 namespace llvm {
+
+template<typename T>
+concept HasName = requires(const T &Object) {
+  { Object.getName() } -> std::same_as<llvm::StringRef>;
+};
 
 /// A special type used by analysis passes to provide an address that
 /// identifies that particular analysis pass type.
@@ -507,7 +513,15 @@ public:
         detail::getAnalysisResult<PassInstrumentationAnalysis>(
             AM, IR, std::tuple<ExtraArgTs...>(ExtraArgs...));
 
+    std::string Description = "LLVM passes";
+    if constexpr (HasName<IRUnitT>) {
+      Description += " on " + IR.getName().str();
+    }
+
+    Task T(Passes.size(), Description);
+
     for (auto &Pass : Passes) {
+      T.advance(Pass->name());
       // Check the PassInstrumentation's BeforePass callbacks before running the
       // pass, skip its execution completely if asked to (callback returns
       // false).

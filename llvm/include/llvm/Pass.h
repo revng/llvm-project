@@ -106,6 +106,8 @@ public:
   /// Registration templates, but can be overloaded directly.
   virtual StringRef getPassName() const;
 
+  virtual bool isSingleTask() const;
+
   /// getPassID - Return the PassID number that corresponds to this pass.
   AnalysisID getPassID() const {
     return PassID;
