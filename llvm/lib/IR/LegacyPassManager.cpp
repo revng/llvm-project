@@ -12,6 +12,7 @@
 
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/ADT/MapVector.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/IRPrintingPasses.h"
 #include "llvm/IR/LLVMContext.h"
@@ -24,6 +25,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/Progress.h"
 #include "llvm/Support/TimeProfiler.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
@@ -358,7 +360,9 @@ bool FunctionPassManagerImpl::run(Function &F) {
   bool Changed = false;
 
   initializeAllAnalysisInfo();
+  Task T(getNumContainedManagers(), "Run function pass managers");
   for (unsigned Index = 0; Index < getNumContainedManagers(); ++Index) {
+    T.advance();
     Changed |= getContainedManager(Index)->runOnFunction(F);
     F.getContext().yield();
   }
@@ -422,6 +426,8 @@ public:
                                            Function &F) override;
 
   StringRef getPassName() const override { return "Module Pass Manager"; }
+
+  bool isSingleTask() const override { return true; }
 
   PMDataManager *getAsPMDataManager() override { return this; }
   Pass *getAsPass() override { return this; }
@@ -531,7 +537,9 @@ bool PassManagerImpl::run(Module &M) {
     Changed |= ImPass->doInitialization(M);
 
   initializeAllAnalysisInfo();
+  Task T(getNumContainedManagers(), "Run module pass managers");
   for (unsigned Index = 0; Index < getNumContainedManagers(); ++Index) {
+    T.advance();
     Changed |= getContainedManager(Index)->runOnModule(M);
     M.getContext().yield();
   }
@@ -1410,8 +1418,10 @@ bool FPPassManager::runOnFunction(Function &F) {
 
   llvm::TimeTraceScope FunctionScope("OptFunction", F.getName());
 
+  Task T(getNumContainedPasses(), "Run function passes");
   for (unsigned Index = 0; Index < getNumContainedPasses(); ++Index) {
     FunctionPass *FP = getContainedPass(Index);
+    T.advance(FP->getPassName(), FP->isSingleTask());
     bool LocalChanged = false;
 
     llvm::TimeTraceScope PassScope("RunPass", FP->getPassName());
@@ -1472,8 +1482,11 @@ bool FPPassManager::runOnFunction(Function &F) {
 bool FPPassManager::runOnModule(Module &M) {
   bool Changed = false;
 
-  for (Function &F : M)
+  auto T = make_task_on_set(make_address_range(M), "Run function pass manager");
+  for (Function &F : M) {
+    T.advance(&F, F.getName());
     Changed |= runOnFunction(F);
+  }
 
   return Changed;
 }
@@ -1525,8 +1538,10 @@ MPPassManager::runOnModule(Module &M) {
   if (EmitICRemark)
     InstrCount = initSizeRemarkInfo(M, FunctionToInstrCount);
 
+  Task T(getNumContainedPasses(), "Run module passes");
   for (unsigned Index = 0; Index < getNumContainedPasses(); ++Index) {
     ModulePass *MP = getContainedPass(Index);
+    T.advance(MP->getPassName(), MP->isSingleTask());
     bool LocalChanged = false;
 
     dumpPassInfo(MP, EXECUTION_MSG, ON_MODULE_MSG, M.getModuleIdentifier());
