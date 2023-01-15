@@ -86,6 +86,10 @@ StringRef Pass::getPassName() const {
   return "Unnamed pass: implement Pass::getPassName()";
 }
 
+bool Pass::isSingleTask() const {
+  return false;
+}
+
 void Pass::preparePassManager(PMStack &) {
   // By default, don't do anything.
 }

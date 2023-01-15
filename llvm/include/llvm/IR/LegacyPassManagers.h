@@ -498,6 +498,8 @@ public:
 
   StringRef getPassName() const override { return "Function Pass Manager"; }
 
+  bool isSingleTask() const override { return true; }
+
   FunctionPass *getContainedPass(unsigned N) {
     assert ( N < PassVector.size() && "Pass number out of range!");
     FunctionPass *FP = static_cast<FunctionPass *>(PassVector[N]);
