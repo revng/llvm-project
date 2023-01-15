@@ -198,6 +198,7 @@ add_llvm_component_library(LLVMSupport
   Parallel.cpp
   PluginLoader.cpp
   PrettyStackTrace.cpp
+  Progress.cpp
   RandomNumberGenerator.cpp
   Regex.cpp
   RISCVAttributes.cpp

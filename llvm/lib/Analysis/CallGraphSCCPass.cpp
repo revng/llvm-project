@@ -31,6 +31,7 @@
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/Progress.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
@@ -80,6 +81,8 @@ public:
   }
 
   StringRef getPassName() const override { return "CallGraph Pass Manager"; }
+
+  bool isSingleTask() const override { return true; }
 
   PMDataManager *getAsPMDataManager() override { return this; }
   Pass *getAsPass() override { return this; }
@@ -171,14 +174,18 @@ bool CGPassManager::RunPassOnSCC(Pass *P, CallGraphSCC &CurSCC,
   FPPassManager *FPP = (FPPassManager*)P;
 
   // Run pass P on all functions in the current SCC.
+  Task T(CurSCC.size(), "Run function pass manager on SCC");
   for (CallGraphNode *CGN : CurSCC) {
     if (Function *F = CGN->getFunction()) {
+      T.advance(F->getName(), true);
       dumpPassInfo(P, EXECUTION_MSG, ON_FUNCTION_MSG, F->getName());
       {
         TimeRegion PassTimer(getPassTimer(FPP));
         Changed |= FPP->runOnFunction(*F);
       }
       F->getContext().yield();
+    } else {
+      T.advance();
     }
   }
 
@@ -436,10 +443,13 @@ bool CGPassManager::RunAllPassesOnSCC(CallGraphSCC &CurSCC, CallGraph &CG,
   // the callgraph when we need to run a CGSCCPass again.
   bool CallGraphUpToDate = true;
 
+  Task T(getNumContainedPasses(), "Run passes on SCC");
+
   // Run all passes on current SCC.
   for (unsigned PassNo = 0, e = getNumContainedPasses();
        PassNo != e; ++PassNo) {
     Pass *P = getContainedPass(PassNo);
+    T.advance(P->getPassName(), P->isSingleTask());
 
     // If we're in -debug-pass=Executions mode, construct the SCC node list,
     // otherwise avoid constructing this string as it is expensive.
@@ -502,8 +512,10 @@ bool CGPassManager::runOnModule(Module &M) {
   bool Changed = doInitialization(CG);
 
   // Walk the callgraph in bottom-up SCC order.
-  scc_iterator<CallGraph*> CGI = scc_begin(&CG);
+  auto T = make_task_on_set(make_range(scc_begin(&CG), scc_end(&CG)),
+                            "LLVM SCC Passes");
 
+  scc_iterator<CallGraph*> CGI = scc_begin(&CG);
   CallGraphSCC CurSCC(CG, &CGI);
   while (!CGI.isAtEnd()) {
     // Copy the current SCC and increment past it so that the pass can hack
@@ -511,6 +523,7 @@ bool CGPassManager::runOnModule(Module &M) {
     const std::vector<CallGraphNode *> &NodeVec = *CGI;
     CurSCC.initialize(NodeVec);
     ++CGI;
+    T.advance(NodeVec, "", true);
 
     // At the top level, we run all the passes in this pass manager on the
     // functions in this SCC.  However, we support iterative compilation in the
@@ -524,9 +537,11 @@ bool CGPassManager::runOnModule(Module &M) {
     // This only happens in the case of a devirtualized call, so we only burn
     // compile time in the case that we're making progress.  We also have a hard
     // iteration count limit in case there is crazy code.
+    Task SCCT({}, "Fixed-point SCC visit");
     unsigned Iteration = 0;
     bool DevirtualizedCall = false;
     do {
+      SCCT.advance("", true);
       LLVM_DEBUG(if (Iteration) dbgs()
                  << "  SCCPASSMGR: Re-visiting SCC, iteration #" << Iteration
                  << '\n');
