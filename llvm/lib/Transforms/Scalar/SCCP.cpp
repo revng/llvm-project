@@ -186,4 +186,3 @@ INITIALIZE_PASS_END(SCCPLegacyPass, "sccp",
 
 // createSCCPPass - This is the public interface to this file.
 FunctionPass *llvm::createSCCPPass() { return new SCCPLegacyPass(); }
-
