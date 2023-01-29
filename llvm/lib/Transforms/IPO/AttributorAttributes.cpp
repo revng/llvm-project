@@ -3482,7 +3482,7 @@ template <typename BaseTy, typename ToTy>
 struct CachedReachabilityAA : public BaseTy {
   using RQITy = ReachabilityQueryInfo<ToTy>;
 
-  CachedReachabilityAA<BaseTy, ToTy>(const IRPosition &IRP, Attributor &A)
+  CachedReachabilityAA(const IRPosition &IRP, Attributor &A)
       : BaseTy(IRP, A) {}
 
   /// See AbstractAttribute::isQueryAA.
