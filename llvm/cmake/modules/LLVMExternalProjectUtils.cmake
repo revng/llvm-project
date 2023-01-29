@@ -291,6 +291,9 @@ function(llvm_ExternalProject_Add name source_dir)
     list(APPEND compiler_args -DCMAKE_ASM_COMPILER_TARGET=${ARG_TARGET_TRIPLE})
   endif()
 
+  list(APPEND compiler_args -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER})
+  list(APPEND compiler_args -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER})
+
   ExternalProject_Add(${name}
     DEPENDS ${ARG_DEPENDS} llvm-config
     ${name}-clobber
