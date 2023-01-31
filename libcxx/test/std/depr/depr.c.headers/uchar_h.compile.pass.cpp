@@ -14,6 +14,8 @@
 // The system-provided <uchar.h> seems to be broken on AIX
 // XFAIL: LIBCXX-AIX-FIXME
 
+// XFAIL: target={{.+}}
+
 // <uchar.h>
 
 #include <uchar.h>

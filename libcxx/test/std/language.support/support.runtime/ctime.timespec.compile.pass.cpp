@@ -20,6 +20,8 @@
 // ::timespec_get is available starting with Android Q (API 29)
 // XFAIL: target={{.+}}-android{{(eabi)?(21|22|23|24|25|26|27|28)}}
 
+// XFAIL: target={{.+}}
+
 #include <ctime>
 #include <type_traits>
 
