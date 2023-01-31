@@ -21,7 +21,7 @@
 // ::aligned_alloc is available starting with Android P (API 28)
 // XFAIL: target={{.+}}-android{{(eabi)?(21|22|23|24|25|26|27)}}
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <type_traits>
 
 static_assert(std::is_same<decltype(aligned_alloc(1, 0)), void*>::value, "");
