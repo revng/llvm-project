@@ -958,6 +958,58 @@ define i1 @supported_intrinsic_range(i16 %x) {
   ret i1 %res
 }
 
+define i1 @ctlz_fold(i16 %x) {
+; CHECK-LABEL: @ctlz_fold(
+; CHECK-NEXT:    [[CMP:%.*]] = icmp ult i16 [[X:%.*]], 256
+; CHECK-NEXT:    br i1 [[CMP]], label [[IF:%.*]], label [[ELSE:%.*]]
+; CHECK:       if:
+; CHECK-NEXT:    [[CTLZ:%.*]] = call i16 @llvm.ctlz.i16(i16 [[X]], i1 false)
+; CHECK-NEXT:    ret i1 true
+; CHECK:       else:
+; CHECK-NEXT:    [[CTLZ2:%.*]] = call i16 @llvm.ctlz.i16(i16 [[X]], i1 false)
+; CHECK-NEXT:    ret i1 true
+;
+  %cmp = icmp ult i16 %x, 256
+  br i1 %cmp, label %if, label %else
+
+if:
+  %ctlz = call i16 @llvm.ctlz.i16(i16 %x, i1 false)
+  %res = icmp uge i16 %ctlz, 8
+  ret i1 %res
+
+else:
+  %ctlz2 = call i16 @llvm.ctlz.i16(i16 %x, i1 false)
+  %res2 = icmp ult i16 %ctlz2, 8
+  ret i1 %res2
+}
+
+define i1 @ctlz_nofold(i16 %x) {
+; CHECK-LABEL: @ctlz_nofold(
+; CHECK-NEXT:    [[CMP:%.*]] = icmp ult i16 [[X:%.*]], 256
+; CHECK-NEXT:    br i1 [[CMP]], label [[IF:%.*]], label [[ELSE:%.*]]
+; CHECK:       if:
+; CHECK-NEXT:    [[CTLZ:%.*]] = call i16 @llvm.ctlz.i16(i16 [[X]], i1 false)
+; CHECK-NEXT:    [[RES:%.*]] = icmp uge i16 [[CTLZ]], 9
+; CHECK-NEXT:    ret i1 [[RES]]
+; CHECK:       else:
+; CHECK-NEXT:    [[CTLZ2:%.*]] = call i16 @llvm.ctlz.i16(i16 [[X]], i1 false)
+; CHECK-NEXT:    [[RES2:%.*]] = icmp ult i16 [[CTLZ2]], 7
+; CHECK-NEXT:    ret i1 [[RES2]]
+;
+  %cmp = icmp ult i16 %x, 256
+  br i1 %cmp, label %if, label %else
+
+if:
+  %ctlz = call i16 @llvm.ctlz.i16(i16 %x, i1 false)
+  %res = icmp uge i16 %ctlz, 9
+  ret i1 %res
+
+else:
+  %ctlz2 = call i16 @llvm.ctlz.i16(i16 %x, i1 false)
+  %res2 = icmp ult i16 %ctlz2, 7
+  ret i1 %res2
+}
+
 declare i16 @llvm.ctlz.i16(i16, i1)
 declare i16 @llvm.abs.i16(i16, i1)
 declare void @llvm.assume(i1)
