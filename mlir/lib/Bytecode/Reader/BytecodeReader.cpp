@@ -1037,9 +1037,11 @@ LogicalResult AttrTypeReader::parseAsmEntry(T &result, EncodingReader &reader,
   size_t numRead = 0;
   MLIRContext *context = fileLoc->getContext();
   if constexpr (std::is_same_v<T, Type>)
-    result = ::parseType(asmStr, context, &numRead);
+    result =
+        ::parseType(asmStr, context, &numRead, /*isKnownNullTerminated=*/true);
   else
-    result = ::parseAttribute(asmStr, context, Type(), &numRead);
+    result = ::parseAttribute(asmStr, context, Type(), &numRead,
+                              /*isKnownNullTerminated=*/true);
   if (!result)
     return failure();
 
