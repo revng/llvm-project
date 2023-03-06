@@ -24,7 +24,7 @@
 #include "llvm/ADT/TypeSwitch.h"
 
 namespace mlir {
-#define GEN_PASS_DEF_CONVERTASYNCTOLLVM
+#define GEN_PASS_DEF_CONVERTASYNCTOLLVMPASS
 #include "mlir/Conversion/Passes.h.inc"
 } // namespace mlir
 
@@ -990,7 +990,9 @@ public:
 
 namespace {
 struct ConvertAsyncToLLVMPass
-    : public impl::ConvertAsyncToLLVMBase<ConvertAsyncToLLVMPass> {
+    : public impl::ConvertAsyncToLLVMPassBase<ConvertAsyncToLLVMPass> {
+  using Base::Base;
+
   void runOnOperation() override;
 };
 } // namespace
@@ -1120,10 +1122,6 @@ public:
   }
 };
 } // namespace
-
-std::unique_ptr<OperationPass<ModuleOp>> mlir::createConvertAsyncToLLVMPass() {
-  return std::make_unique<ConvertAsyncToLLVMPass>();
-}
 
 void mlir::populateAsyncStructuralTypeConversionsAndLegality(
     TypeConverter &typeConverter, RewritePatternSet &patterns,
