@@ -34,7 +34,7 @@ void TestBase64Decode(StringRef Input, StringRef Expected,
               llvm::ArrayRef<char>(Expected.data(), Expected.size()));
   } else {
     ASSERT_THAT_ERROR(decodeBase64(Input, DecodedBytes),
-                      FailedWithMessage(ExpectedErrorMessage));
+                      FailedWithMessage(ExpectedErrorMessage.str()));
   }
 }
 
