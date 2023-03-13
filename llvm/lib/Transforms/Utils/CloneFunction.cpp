@@ -269,7 +269,7 @@ Function *llvm::CloneFunction(Function *F, ValueToValueMapTy &VMap,
     }
 
   SmallVector<ReturnInst*, 8> Returns;  // Ignore returns cloned.
-  CloneFunctionInto(NewF, F, VMap, F->getSubprogram() != nullptr, Returns, "",
+  CloneFunctionInto(NewF, F, VMap, false, Returns, "",
                     CodeInfo);
 
   return NewF;

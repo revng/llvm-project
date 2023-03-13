@@ -341,6 +341,9 @@ public:
     setOperand(0, DMA);
   }
 
+  /// Whether the MemoryUse is optimized. If ensureOptimizedUses() was called,
+  /// uses will usually be optimized, but this is not guaranteed (e.g. due to
+  /// invalidation and optimization limits.)
   bool isOptimized() const {
     return getDefiningAccess() && OptimizedID == getDefiningAccess()->getID();
   }
@@ -789,6 +792,13 @@ public:
   /// about the beginning or end of a block.
   enum InsertionPlace { Beginning, End, BeforeTerminator };
 
+  /// By default, uses are *not* optimized during MemorySSA construction.
+  /// Calling this method will attempt to optimize all MemoryUses, if this has
+  /// not happened yet for this MemorySSA instance. This should be done if you
+  /// plan to query the clobbering access for most uses, or if you walk the
+  /// def-use chain of uses.
+  void ensureOptimizedUses();
+
 protected:
   // Used by Memory SSA annotater, dumpers, and wrapper pass
   friend class MemorySSAAnnotatedWriter;
@@ -891,6 +901,7 @@ private:
   std::unique_ptr<CachingWalker<AliasAnalysis>> Walker;
   std::unique_ptr<SkipSelfWalker<AliasAnalysis>> SkipWalker;
   unsigned NextID;
+  bool IsOptimized = false;
 };
 
 // Internal MemorySSA utils, for use by MemorySSA classes and walkers
