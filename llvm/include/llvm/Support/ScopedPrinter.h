@@ -819,7 +819,7 @@ struct DictScope : DelimitedScope {
     W.objectBegin();
   }
 
-  ~DictScope() {
+  ~DictScope() override {
     if (W)
       W->objectEnd();
   }
@@ -838,7 +838,7 @@ struct ListScope : DelimitedScope {
     W.arrayBegin();
   }
 
-  ~ListScope() {
+  ~ListScope() override {
     if (W)
       W->arrayEnd();
   }
