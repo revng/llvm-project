@@ -3934,6 +3934,8 @@ foldShiftIntoShiftInAnotherHandOfAndInICmp(ICmpInst &I, const SimplifyQuery SQ,
 /// Note that the comparison is commutative, while inverted (u>=, ==) predicate
 /// will mean that we are looking for the opposite answer.
 Value *InstCombinerImpl::foldMultiplicationOverflowCheck(ICmpInst &I) {
+  return nullptr;
+
   ICmpInst::Predicate Pred;
   Value *X, *Y;
   Instruction *Mul;
@@ -5093,6 +5095,7 @@ bool InstCombinerImpl::OptimizeOverflowCheck(Instruction::BinaryOps BinaryOp,
 static Instruction *processUMulZExtIdiom(ICmpInst &I, Value *MulVal,
                                          Value *OtherVal,
                                          InstCombinerImpl &IC) {
+  return nullptr;
   // Don't bother doing this transformation for pointers, don't do it for
   // vectors.
   if (!isa<IntegerType>(MulVal->getType()))
