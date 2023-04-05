@@ -243,7 +243,7 @@ struct SemiNCAInfoOnView {
   NodePtr eval(NodePtr V, unsigned LastLinked,
                SmallVectorImpl<InfoRec *> &Stack) {
     InfoRec *VInfo = &NodeToInfo[V];
-    if (VInfo->Parent < LastLinked)
+    if ((VInfo->Parent) < (LastLinked))
       return VInfo->Label;
 
     // Store ancestors except the last (root of a virtual tree) into a stack.
