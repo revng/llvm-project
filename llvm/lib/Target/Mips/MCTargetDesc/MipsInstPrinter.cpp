@@ -149,9 +149,9 @@ void MipsInstPrinter::printJumpOperand(const MCInst *MI, unsigned OpNo,
     return printOperand(MI, OpNo, STI, O);
 
   if (PrintBranchImmAsAddress)
-    O << markup("<imm:") << formatHex(Op.getImm()) << markup(">");
+    O << markup("<addr:") << formatHex(Op.getImm()) << markup(">");
   else
-    O << markup("<imm:") << formatImm(Op.getImm()) << markup(">");
+    O << markup("<addr:") << formatImm(Op.getImm()) << markup(">");
 }
 
 void MipsInstPrinter::printBranchOperand(const MCInst *MI, uint64_t Address,
@@ -168,9 +168,9 @@ void MipsInstPrinter::printBranchOperand(const MCInst *MI, uint64_t Address,
       Target &= 0xffffffff;
     else if (STI.hasFeature(Mips::FeatureMips16))
       Target &= 0xffff;
-    O << markup("<imm:") << formatHex(Target) << markup(">");
+    O << markup("<addr:") << formatHex(Target) << markup(">");
   } else {
-    O << markup("<imm:") << formatImm(Op.getImm()) << markup(">");
+    O << markup("<addr:") << formatImm(Op.getImm()) << markup(">");
   }
 }
 
