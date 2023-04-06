@@ -556,6 +556,7 @@ def brtarget : Operand<OtherVT> {
   let EncoderMethod = "getBranchTargetOpValue";
   let OperandType = "OPERAND_PCREL";
   let DecoderMethod = "DecodeT2BROperand";
+  let PrintMethod = "printPCRelativeOperand";
 }
 
 // Branches targeting ARM-mode must be divisible by 4 if they're a raw
@@ -574,6 +575,7 @@ def arm_br_target : Operand<OtherVT> {
   let ParserMatchClass = ARMBranchTarget;
   let EncoderMethod = "getARMBranchTargetOpValue";
   let OperandType = "OPERAND_PCREL";
+  let PrintMethod = "printPCRelativeOperand";
 }
 
 // Call target for ARM. Handles conditional/unconditional
@@ -582,6 +584,7 @@ def arm_bl_target : Operand<i32> {
   let ParserMatchClass = ARMBranchTarget;
   let EncoderMethod = "getARMBLTargetOpValue";
   let OperandType = "OPERAND_PCREL";
+  let PrintMethod = "printPCRelativeOperand";
 }
 
 // Target for BLX *from* ARM mode.
@@ -589,6 +592,7 @@ def arm_blx_target : Operand<i32> {
   let ParserMatchClass = ThumbBranchTarget;
   let EncoderMethod = "getARMBLXTargetOpValue";
   let OperandType = "OPERAND_PCREL";
+  let PrintMethod = "printPCRelativeOperand";
 }
 
 // A list of registers separated by comma. Used by load/store multiple.
