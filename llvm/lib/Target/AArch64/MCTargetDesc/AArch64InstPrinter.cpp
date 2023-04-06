@@ -1751,12 +1751,11 @@ void AArch64InstPrinter::printAlignedLabel(const MCInst *MI, uint64_t Address,
   // If the label has already been resolved to an immediate offset (say, when
   // we're running the disassembler), just print the immediate.
   if (Op.isImm()) {
-    O << markup("<imm:");
     int64_t Offset = Op.getImm() * 4;
     if (PrintBranchImmAsAddress)
-      O << formatHex(Address + Offset);
+      O << markup("<absolute:") << formatHex(Address + Offset);
     else
-      O << "#" << formatImm(Offset);
+      O << markup("<pcrel:") << "#" << formatImm(Offset);
     O << markup(">");
     return;
   }
@@ -1766,7 +1765,7 @@ void AArch64InstPrinter::printAlignedLabel(const MCInst *MI, uint64_t Address,
       dyn_cast<MCConstantExpr>(MI->getOperand(OpNum).getExpr());
   int64_t TargetAddress;
   if (BranchTarget && BranchTarget->evaluateAsAbsolute(TargetAddress)) {
-    O << formatHex((uint64_t)TargetAddress);
+    O << markup("<addr:") << formatHex((uint64_t)TargetAddress) << markup(">");
   } else {
     // Otherwise, just print the expression.
     MI->getOperand(OpNum).getExpr()->print(O, &MAI);
@@ -1782,12 +1781,11 @@ void AArch64InstPrinter::printAdrpLabel(const MCInst *MI, uint64_t Address,
   // If the label has already been resolved to an immediate offset (say, when
   // we're running the disassembler), just print the immediate.
   if (Op.isImm()) {
-    const int64_t Offset = Op.getImm() * 4096;
-    O << markup("<imm:");
+    const int64_t Target = int64_t(Address & -4096) + (Op.getImm() * 4096);
     if (PrintBranchImmAsAddress)
-      O << formatHex((Address & -4096) + Offset);
+      O << markup("<absolute:") << formatHex(Target);
     else
-      O << "#" << Offset;
+      O << markup("<pcrel:") << "#" << (Target - Address);
     O << markup(">");
     return;
   }
