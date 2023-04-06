@@ -47,6 +47,10 @@ public:
   void printOperand(const MCInst *MI, uint64_t Address, unsigned OpNum,
                     const MCSubtargetInfo &STI, raw_ostream &O);
 
+  void printPCRelativeOperand(const MCInst *MI, uint64_t Address,
+                              unsigned OpNum, const MCSubtargetInfo &STI,
+                              raw_ostream &O);
+
   void printSORegRegOperand(const MCInst *MI, unsigned OpNum,
                             const MCSubtargetInfo &STI, raw_ostream &O);
   void printSORegImmOperand(const MCInst *MI, unsigned OpNum,
@@ -274,6 +278,8 @@ public:
                                  const MCSubtargetInfo &STI, raw_ostream &O);
   void printMveSaturateOp(const MCInst *MI, unsigned OpNum,
                          const MCSubtargetInfo &STI, raw_ostream &O);
+
+  StringRef immediateOffsetMarkup(const MCOperand &Operand);
 private:
   unsigned DefaultAltIdx = ARM::NoRegAltName;
 };

@@ -349,16 +349,23 @@ void ARMInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   }
 }
 
-void ARMInstPrinter::printOperand(const MCInst *MI, uint64_t Address,
-                                  unsigned OpNum, const MCSubtargetInfo &STI,
-                                  raw_ostream &O) {
+void ARMInstPrinter::printPCRelativeOperand(const MCInst *MI, uint64_t Address,
+                                            unsigned OpNum,
+                                            const MCSubtargetInfo &STI,
+                                            raw_ostream &O) {
   const MCOperand &Op = MI->getOperand(OpNum);
-  if (!Op.isImm() || !PrintBranchImmAsAddress || getUseMarkup())
+  if (!Op.isImm() || getUseMarkup())
     return printOperand(MI, OpNum, STI, O);
+
+  if (!PrintBranchImmAsAddress) {
+    O << markup("<pcrel:") << '#' << formatImm(Op.getImm()) << markup(">");
+    return;
+  }
+
   uint64_t Target = ARM_MC::evaluateBranchTarget(MII.get(MI->getOpcode()),
                                                  Address, Op.getImm());
   Target &= 0xffffffff;
-  O << formatHex(Target);
+  O << markup("<pcrel:") << formatHex(Target) << markup(">");
   if (CommentStream)
     *CommentStream << "imm = #" << formatImm(Op.getImm()) << '\n';
 }
@@ -381,9 +388,9 @@ void ARMInstPrinter::printThumbLdrLabelOperand(const MCInst *MI, unsigned OpNum,
   if (OffImm == INT32_MIN)
     OffImm = 0;
   if (isSub) {
-    O << markup("<imm:") << "#-" << formatImm(-OffImm) << markup(">");
+    O << markup("<pcrel:") << "#-" << formatImm(-OffImm) << markup(">");
   } else {
-    O << markup("<imm:") << "#" << formatImm(OffImm) << markup(">");
+    O << markup("<pcrel:") << "#" << formatImm(OffImm) << markup(">");
   }
   O << "]" << markup(">");
 }
@@ -1171,6 +1178,10 @@ void ARMInstPrinter::printT2SOOperand(const MCInst *MI, unsigned OpNum,
                    ARM_AM::getSORegOffset(MO2.getImm()), UseMarkup);
 }
 
+StringRef ARMInstPrinter::immediateOffsetMarkup(const MCOperand &Operand) {
+  return markup(Operand.getReg() == ARM::PC ? "<pcrel:" : "<imm:");
+}
+
 template <bool AlwaysPrintImm0>
 void ARMInstPrinter::printAddrModeImm12Operand(const MCInst *MI, unsigned OpNum,
                                                const MCSubtargetInfo &STI,
@@ -1191,11 +1202,15 @@ void ARMInstPrinter::printAddrModeImm12Operand(const MCInst *MI, unsigned OpNum,
   // Special value for #-0. All others are normal.
   if (OffImm == INT32_MIN)
     OffImm = 0;
+
   if (isSub) {
-    O << ", " << markup("<imm:") << "#-" << formatImm(-OffImm) << markup(">");
+    O << ", " << immediateOffsetMarkup(MO1);
+    O << "#-" << formatImm(-OffImm) << markup(">");
   } else if (AlwaysPrintImm0 || OffImm > 0) {
-    O << ", " << markup("<imm:") << "#" << formatImm(OffImm) << markup(">");
+    O << ", " << immediateOffsetMarkup(MO1);
+    O << "#" << formatImm(OffImm) << markup(">");
   }
+
   O << "]" << markup(">");
 }
 
@@ -1215,11 +1230,15 @@ void ARMInstPrinter::printT2AddrModeImm8Operand(const MCInst *MI,
   // Don't print +0.
   if (OffImm == INT32_MIN)
     OffImm = 0;
+
   if (isSub) {
-    O << ", " << markup("<imm:") << "#-" << -OffImm << markup(">");
+    O << ", " << immediateOffsetMarkup(MO1);
+    O << "#-" << -OffImm << markup(">");
   } else if (AlwaysPrintImm0 || OffImm > 0) {
-    O << ", " << markup("<imm:") << "#" << OffImm << markup(">");
+    O << ", " << immediateOffsetMarkup(MO1);
+    O << "#" << OffImm << markup(">");
   }
+
   O << "]" << markup(">");
 }
 
@@ -1247,11 +1266,15 @@ void ARMInstPrinter::printT2AddrModeImm8s4Operand(const MCInst *MI,
   // Don't print +0.
   if (OffImm == INT32_MIN)
     OffImm = 0;
+
   if (isSub) {
-    O << ", " << markup("<imm:") << "#-" << -OffImm << markup(">");
+    O << ", " << immediateOffsetMarkup(MO1);
+    O << "#-" << -OffImm << markup(">");
   } else if (AlwaysPrintImm0 || OffImm > 0) {
-    O << ", " << markup("<imm:") << "#" << OffImm << markup(">");
+    O << ", " << immediateOffsetMarkup(MO1);
+    O << "#" << OffImm << markup(">");
   }
+
   O << "]" << markup(">");
 }
 
@@ -1264,8 +1287,8 @@ void ARMInstPrinter::printT2AddrModeImm0_1020s4Operand(
   O << markup("<mem:") << "[";
   printRegName(O, MO1.getReg());
   if (MO2.getImm()) {
-    O << ", " << markup("<imm:") << "#" << formatImm(MO2.getImm() * 4)
-      << markup(">");
+    O << ", " << markup(MO1.getReg() == ARM::PC ? "<pcrel:" : "<imm:")
+      << "#" << formatImm(MO2.getImm() * 4) << markup(">");
   }
   O << "]" << markup(">");
 }
@@ -1275,7 +1298,7 @@ void ARMInstPrinter::printT2AddrModeImm8OffsetOperand(
     raw_ostream &O) {
   const MCOperand &MO1 = MI->getOperand(OpNum);
   int32_t OffImm = (int32_t)MO1.getImm();
-  O << ", " << markup("<imm:");
+  O << ", " << markup("<pcrel:");
   if (OffImm == INT32_MIN)
     O << "#-0";
   else if (OffImm < 0)
@@ -1293,7 +1316,7 @@ void ARMInstPrinter::printT2AddrModeImm8s4OffsetOperand(
 
   assert(((OffImm & 0x3) == 0) && "Not a valid immediate!");
 
-  O << ", " << markup("<imm:");
+  O << ", " << markup("<pcrel:");
   if (OffImm == INT32_MIN)
     O << "#-0";
   else if (OffImm < 0)
