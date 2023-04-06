@@ -434,8 +434,14 @@ void X86ATTInstPrinter::printMemReference(const MCInst *MI, unsigned Op,
 
   if (DispSpec.isImm()) {
     int64_t DispVal = DispSpec.getImm();
-    if (DispVal || (!IndexReg.getReg() && !BaseReg.getReg()))
-      O << markup("<imm:") << formatImm(DispVal) << markup(">");
+    if (DispVal || (!IndexReg.getReg() && !BaseReg.getReg())) {
+      bool IsRIPBased = BaseReg.getReg() == X86::RIP ||
+                        BaseReg.getReg() == X86::EIP;
+      if (IsRIPBased && !IndexReg.getReg())
+        O << markup("<pcrel:") << formatImm(DispVal) << markup(">");
+      else
+        O << markup("<imm:") << formatImm(DispVal) << markup(">");
+    }
   } else {
     assert(DispSpec.isExpr() && "non-immediate displacement for LEA?");
     DispSpec.getExpr()->print(O, &MAI);
