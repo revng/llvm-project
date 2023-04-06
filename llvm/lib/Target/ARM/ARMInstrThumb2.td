@@ -376,6 +376,7 @@ class BFLabelOp<string signed, string isNeg, string zeroPermitted, string size,
   let OperandType = "OPERAND_PCREL";
   let DecoderMethod = !strconcat("DecodeBFLabelOperand<", signed, ", ",
                                  isNeg, ", ", zeroPermitted, ", ", size, ">");
+  let PrintMethod = "printPCRelativeOperand";
 }
 def bflabel_u4  : BFLabelOp<"false", "false", "false", "4",  "ARM::fixup_bf_branch">;
 def bflabel_s12 : BFLabelOp<"true",  "false", "true",  "12", "ARM::fixup_bfc_target">;
@@ -407,6 +408,7 @@ def bfafter_target : Operand<OtherVT> {
     let EncoderMethod = "getBFAfterTargetOpValue";
     let OperandType = "OPERAND_PCREL";
     let DecoderMethod = "DecodeBFAfterTargetOperand";
+    let PrintMethod = "printPCRelativeOperand";
 }
 
 // pred operand excluding AL

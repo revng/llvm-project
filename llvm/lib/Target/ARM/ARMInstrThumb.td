@@ -128,6 +128,7 @@ let OperandType = "OPERAND_PCREL" in {
 def t_brtarget : Operand<OtherVT> {
   let EncoderMethod = "getThumbBRTargetOpValue";
   let DecoderMethod = "DecodeThumbBROperand";
+  let PrintMethod = "printPCRelativeOperand";
 }
 
 // ADR instruction labels.
@@ -142,12 +143,14 @@ def thumb_br_target : Operand<OtherVT> {
   let ParserMatchClass = ThumbBranchTarget;
   let EncoderMethod = "getThumbBranchTargetOpValue";
   let OperandType = "OPERAND_PCREL";
+  let PrintMethod = "printPCRelativeOperand";
 }
 
 def thumb_bl_target : Operand<i32> {
   let ParserMatchClass = ThumbBranchTarget;
   let EncoderMethod = "getThumbBLTargetOpValue";
   let DecoderMethod = "DecodeThumbBLTargetOperand";
+  let PrintMethod = "printPCRelativeOperand";
 }
 
 // Target for BLX *from* thumb mode.
@@ -155,18 +158,21 @@ def thumb_blx_target : Operand<i32> {
   let ParserMatchClass = ARMBranchTarget;
   let EncoderMethod = "getThumbBLXTargetOpValue";
   let DecoderMethod = "DecodeThumbBLXOffset";
+  let PrintMethod = "printPCRelativeOperand";
 }
 
 def thumb_bcc_target : Operand<OtherVT> {
   let ParserMatchClass = ThumbBranchTarget;
   let EncoderMethod = "getThumbBCCTargetOpValue";
   let DecoderMethod = "DecodeThumbBCCTargetOperand";
+  let PrintMethod = "printPCRelativeOperand";
 }
 
 def thumb_cb_target : Operand<OtherVT> {
   let ParserMatchClass = ThumbBranchTarget;
   let EncoderMethod = "getThumbCBTargetOpValue";
   let DecoderMethod = "DecodeThumbCmpBROperand";
+  let PrintMethod = "printPCRelativeOperand";
 }
 } // OperandType = "OPERAND_PCREL"
 
