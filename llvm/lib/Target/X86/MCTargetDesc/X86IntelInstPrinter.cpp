@@ -419,7 +419,13 @@ void X86IntelInstPrinter::printMemReference(const MCInst *MI, unsigned Op,
           DispVal = -DispVal;
         }
       }
-      O << markup("<imm:") << formatImm(DispVal) << markup(">");
+
+      bool IsRIPBased = BaseReg.getReg() == X86::RIP ||
+                        BaseReg.getReg() == X86::EIP;
+      if (IsRIPBased && !IndexReg.getReg())
+        O << markup("<pcrel:") << formatImm(DispVal) << markup(">");
+      else
+        O << markup("<imm:") << formatImm(DispVal) << markup(">");
     }
   }
 
