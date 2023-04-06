@@ -1,6 +1,6 @@
 # RUN: llvm-mc -triple=aarch64 -mattr=+all --mdis %s | FileCheck %s
 
-# CHECK:      b.ne	<imm:#20>
+# CHECK:      b.ne	<pcrel:#20>
 0xa1 0x00 0x00 0x54
 # CHECK-NEXT: asr	<reg:w0>, <reg:w0>, <imm:#0>
 0x00 0x7c 0x00 0x13
