@@ -322,7 +322,7 @@ void X86InstPrinterCommon::printPCRelImm(const MCInst *MI, uint64_t Address,
 
   const MCOperand &Op = MI->getOperand(OpNo);
   if (Op.isImm()) {
-    O << markup("<imm:");
+    O << markup("<addr:");
     if (PrintBranchImmAsAddress) {
       uint64_t Target = Address + Op.getImm();
       if (MAI.getCodePointerSize() == 4)
@@ -338,7 +338,7 @@ void X86InstPrinterCommon::printPCRelImm(const MCInst *MI, uint64_t Address,
     const MCConstantExpr *BranchTarget = dyn_cast<MCConstantExpr>(Op.getExpr());
     int64_t Address;
     if (BranchTarget && BranchTarget->evaluateAsAbsolute(Address)) {
-      O << markup("<imm:") << formatHex((uint64_t)Address) << markup(">");
+      O << markup("<addr:") << formatHex((uint64_t)Address) << markup(">");
     } else {
       // Otherwise, just print the expression.
       Op.getExpr()->print(O, &MAI);
