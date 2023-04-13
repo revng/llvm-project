@@ -211,6 +211,12 @@ void DebugInfoFinder::processInstruction(const Module &M,
 
   if (auto DbgLoc = I.getDebugLoc())
     processLocation(M, DbgLoc.get());
+
+  MDNode *LoopMD = I.getMetadata(LLVMContext::MD_loop);
+  if (auto *Tuple = cast_or_null<MDTuple>(LoopMD))
+    for (const MDOperand &Operand : Tuple->operands())
+      if (const DILocation *Location = dyn_cast<DILocation>(Operand.get()))
+        processLocation(M, Location);
 }
 
 void DebugInfoFinder::processLocation(const Module &M, const DILocation *Loc) {
