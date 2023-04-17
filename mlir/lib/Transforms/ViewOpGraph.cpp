@@ -9,6 +9,7 @@
 #include "mlir/Transforms/ViewOpGraph.h"
 
 #include "mlir/IR/Block.h"
+#include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/Pass/Pass.h"
@@ -257,6 +258,12 @@ private:
   /// operation inside the cluster.
   void processBlock(Block &block) {
 
+    // If we are processing the `Block` containing the functions, we should not
+    // skip all the intermediate operations (the `LLVMFuncOp` themself). We can
+    // check this by disabling the feature if the parent `Operation` of the
+    // current block is the `Module` itself.
+    bool IsModuleBlock = llvm::isa<mlir::ModuleOp>(block.getParentOp());
+
     // Prepare the name for the block node
     std::string nodeName;
     llvm::raw_string_ostream blockNameStr(nodeName);
@@ -267,22 +274,43 @@ private:
 
       // Emit a node for each operation.
       std::optional<Node> prevNode;
-      for (Operation &op : block) {
-        Node nextNode = processOperation(&op);
-        if (printControlFlowEdges && prevNode)
-          emitEdgeStmt(*prevNode, nextNode, /*label=*/"",
+
+      // Separately handle the `onlyEntryAndExitOperations` option, by only
+      // printing the first and last operation in a `mlir::Block`.
+      if (!IsModuleBlock and onlyEntryAndExitOperations
+          and block.getOperations().size() > 2) {
+        Operation &firstOp = block.front();
+        Node firstNode = processOperation(&firstOp);
+        blockFirstNodeMap[&block] = firstNode;
+
+        Operation &lastOp = block.back();
+        Node lastNode = processOperation(&lastOp);
+        blockLastNodeMap[&block] = lastNode;
+
+        if (printControlFlowEdges) {
+          emitEdgeStmt(firstNode, lastNode, /*label=*/"",
                        kLineStyleControlFlow);
-
-        // If we are at first iteration, save the first operand node for the
-        // incoming edges.
-        if (not prevNode) {
-          blockFirstNodeMap[&block] = nextNode;
         }
-        prevNode = nextNode;
-      }
+      } else {
 
-      // Save the last operation for the outgoing edges.
-      blockLastNodeMap[&block] = *prevNode;
+        // In all the other cases, we loop over all the operations.
+        for (Operation &op : block) {
+          Node nextNode = processOperation(&op);
+          if (printControlFlowEdges && prevNode)
+            emitEdgeStmt(*prevNode, nextNode, /*label=*/"",
+                         kLineStyleControlFlow);
+
+          // If we are at first iteration, save the first operand node for the
+          // incoming edges.
+          if (not prevNode) {
+            blockFirstNodeMap[&block] = nextNode;
+          }
+          prevNode = nextNode;
+        }
+
+        // Save the last operation for the outgoing edges.
+        blockLastNodeMap[&block] = *prevNode;
+      }
     }, nodeName);
   }
 
