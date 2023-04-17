@@ -279,7 +279,9 @@ def ViewOpGraph : Pass<"view-op-graph"> {
     Option<"printResultTypes", "print-result-types", "bool",
             /*default=*/"true", "Print result types of operations">,
     Option<"printRegionControlFlowEdges", "print-region-control-flow-edges",
-           "bool", /*default=*/"false", "Print region control flow edges">
+           "bool", /*default=*/"false", "Print region control flow edges">,
+    Option<"onlyEntryAndExitOperations", "only-entry-exit-ops",
+           "bool", /*default=*/"false", "Print only entry and exit operations">
   ];
   let constructor = "mlir::createPrintOpGraphPass()";
 }
