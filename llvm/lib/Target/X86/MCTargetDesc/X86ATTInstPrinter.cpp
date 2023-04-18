@@ -435,7 +435,7 @@ void X86ATTInstPrinter::printMemReference(const MCInst *MI, unsigned Op,
   if (DispSpec.isImm()) {
     int64_t DispVal = DispSpec.getImm();
     if (DispVal || (!IndexReg.getReg() && !BaseReg.getReg()))
-      O << formatImm(DispVal);
+      O << markup("<imm:") << formatImm(DispVal) << markup(">");
   } else {
     assert(DispSpec.isExpr() && "non-immediate displacement for LEA?");
     DispSpec.getExpr()->print(O, &MAI);
