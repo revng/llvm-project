@@ -165,7 +165,7 @@ void SystemZInstPrinter::printPCRelOperand(const MCInst *MI, int OpNum,
                                            raw_ostream &O) {
   const MCOperand &MO = MI->getOperand(OpNum);
   if (MO.isImm()) {
-    O << markup("<imm:") << "0x";
+    O << markup("<absolute:") << "0x";
     O.write_hex(MO.getImm());
     O << markup(">");
   } else
