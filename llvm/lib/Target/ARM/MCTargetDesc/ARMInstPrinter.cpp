@@ -372,7 +372,7 @@ void ARMInstPrinter::printThumbLdrLabelOperand(const MCInst *MI, unsigned OpNum,
     return;
   }
 
-  O << markup("<mem:") << "[pc, ";
+  O << markup("<mem:") << "[" << markup("<reg:") << "pc" << markup(">") << ", ";
 
   int32_t OffImm = (int32_t)MO1.getImm();
   bool isSub = OffImm < 0;
