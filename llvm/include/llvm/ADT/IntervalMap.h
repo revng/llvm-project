@@ -1215,7 +1215,9 @@ IntervalMapImpl::IdxPair IntervalMap<KeyT, ValT, N, Traits>::
 branchRoot(unsigned Position) {
   using namespace IntervalMapImpl;
   // How many external leaf nodes to hold RootLeaf+1?
-  const unsigned Nodes = RootLeaf::Capacity / Leaf::Capacity + 1;
+  using CapacityType = decltype(RootLeaf::Capacity);
+  const unsigned Nodes = (RootLeaf::Capacity
+                          / static_cast<CapacityType>(Leaf::Capacity) + 1);
 
   // Compute element distribution among new nodes.
   unsigned size[Nodes];
@@ -1256,7 +1258,9 @@ IntervalMapImpl::IdxPair IntervalMap<KeyT, ValT, N, Traits>::
 splitRoot(unsigned Position) {
   using namespace IntervalMapImpl;
   // How many external leaf nodes to hold RootBranch+1?
-  const unsigned Nodes = RootBranch::Capacity / Branch::Capacity + 1;
+  using CapacityType = decltype(RootBranch::Capacity);
+  const unsigned Nodes = (RootBranch::Capacity
+                          / static_cast<CapacityType>(Branch::Capacity) + 1);
 
   // Compute element distribution among new nodes.
   unsigned Size[Nodes];
