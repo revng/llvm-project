@@ -16,6 +16,7 @@
 #include "llvm/DebugInfo/CodeView/StringsAndChecksums.h"
 #include "llvm/DebugInfo/PDB/Native/LinePrinter.h"
 #include "llvm/DebugInfo/PDB/Native/ModuleDebugStream.h"
+#include "llvm/DebugInfo/PDB/Native/NativeSession.h"
 #include "llvm/Object/Binary.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Support/Error.h"
@@ -32,7 +33,6 @@ namespace pdb {
 class InputFile;
 class LinePrinter;
 class PDBFile;
-class NativeSession;
 class SymbolGroupIterator;
 class SymbolGroup;
 
