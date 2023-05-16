@@ -24,6 +24,13 @@ template class llvm::DominatorTreeOnView<Block, /*IsPostDom=*/false, llvm::DTIde
 template class llvm::DominatorTreeOnView<Block, /*IsPostDom=*/true, llvm::DTIdentityView>;
 template class llvm::DomTreeNodeOnView<Block, llvm::DTIdentityView>;
 
+// Explicit instantiation for the `llvm::DomTreeBuilder::DeleteEdge` method,
+template void llvm::DomTreeBuilder::DeleteEdge<Block, false, llvm::DTIdentityView>(
+  DomTreeOnView<Block, DTIdentityView> &DT, Block *From, Block *To);
+
+template void llvm::DomTreeBuilder::DeleteEdge<Block, true, llvm::DTIdentityView>(
+  PostDomTreeOnView<Block, DTIdentityView> &DT, Block *From, Block *To);
+
 //===----------------------------------------------------------------------===//
 // DominanceInfoBase
 //===----------------------------------------------------------------------===//
