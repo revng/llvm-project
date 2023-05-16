@@ -588,7 +588,73 @@ public:
   MemoryEffects getMemoryEffects(const CallBase *Call, AAQueryInfo &AAQI);
 
 private:
-  class Concept;
+  /// A private abstract base class describing the concept of an individual alias
+  /// analysis implementation.
+  ///
+  /// This interface is implemented by any \c Model instantiation. It is also the
+  /// interface which a type used to instantiate the model must provide.
+  ///
+  /// All of these methods model methods by the same name in the \c
+  /// AAResults class. Only differences and specifics to how the
+  /// implementations are called are documented here.
+  class Concept {
+  public:
+    virtual ~Concept() = 0;
+  
+    //===--------------------------------------------------------------------===//
+    /// \name Alias Queries
+    /// @{
+    
+    /// The main low level interface to the alias analysis implementation.
+    /// Returns an AliasResult indicating whether the two pointers are aliased to
+    /// each other. This is the interface that must be implemented by specific
+    /// alias analysis implementations.
+    virtual AliasResult alias(const MemoryLocation &LocA,
+                              const MemoryLocation &LocB, AAQueryInfo &AAQI,
+                              const Instruction *CtxI) = 0;
+  
+    /// @}
+    //===--------------------------------------------------------------------===//
+    /// \name Simple mod/ref information
+    /// @{
+    
+    /// Returns a bitmask that should be unconditionally applied to the ModRef
+    /// info of a memory location. This allows us to eliminate Mod and/or Ref from
+    /// the ModRef info based on the knowledge that the memory location points to
+    /// constant and/or locally-invariant memory.
+    virtual ModRefInfo getModRefInfoMask(const MemoryLocation &Loc,
+                                         AAQueryInfo &AAQI,
+                                         bool IgnoreLocals) = 0;
+  
+    /// Get the ModRef info associated with a pointer argument of a callsite. The
+    /// result's bits are set to indicate the allowed aliasing ModRef kinds. Note
+    /// that these bits do not necessarily account for the overall behavior of
+    /// the function, but rather only provide additional per-argument
+    /// information.
+    virtual ModRefInfo getArgModRefInfo(const CallBase *Call,
+                                        unsigned ArgIdx) = 0;
+  
+    /// Return the behavior of the given call site.
+    virtual MemoryEffects getMemoryEffects(const CallBase *Call,
+                                           AAQueryInfo &AAQI) = 0;
+  
+    /// Return the behavior when calling the given function.
+    virtual MemoryEffects getMemoryEffects(const Function *F) = 0;
+  
+    /// getModRefInfo (for call sites) - Return information about whether
+    /// a particular call site modifies or reads the specified memory location.
+    virtual ModRefInfo getModRefInfo(const CallBase *Call,
+                                     const MemoryLocation &Loc,
+                                     AAQueryInfo &AAQI) = 0;
+  
+    /// Return information about whether two call sites may refer to the same set
+    /// of memory locations. See the AA documentation for details:
+    ///   http://llvm.org/docs/AliasAnalysis.html#ModRefInfo
+    virtual ModRefInfo getModRefInfo(const CallBase *Call1, const CallBase *Call2,
+                                     AAQueryInfo &AAQI) = 0;
+  
+    /// @}
+  };
 
   template <typename T> class Model;
 
@@ -664,74 +730,6 @@ public:
 /// Temporary typedef for legacy code that uses a generic \c AliasAnalysis
 /// pointer or reference.
 using AliasAnalysis = AAResults;
-
-/// A private abstract base class describing the concept of an individual alias
-/// analysis implementation.
-///
-/// This interface is implemented by any \c Model instantiation. It is also the
-/// interface which a type used to instantiate the model must provide.
-///
-/// All of these methods model methods by the same name in the \c
-/// AAResults class. Only differences and specifics to how the
-/// implementations are called are documented here.
-class AAResults::Concept {
-public:
-  virtual ~Concept() = 0;
-
-  //===--------------------------------------------------------------------===//
-  /// \name Alias Queries
-  /// @{
-
-  /// The main low level interface to the alias analysis implementation.
-  /// Returns an AliasResult indicating whether the two pointers are aliased to
-  /// each other. This is the interface that must be implemented by specific
-  /// alias analysis implementations.
-  virtual AliasResult alias(const MemoryLocation &LocA,
-                            const MemoryLocation &LocB, AAQueryInfo &AAQI,
-                            const Instruction *CtxI) = 0;
-
-  /// @}
-  //===--------------------------------------------------------------------===//
-  /// \name Simple mod/ref information
-  /// @{
-
-  /// Returns a bitmask that should be unconditionally applied to the ModRef
-  /// info of a memory location. This allows us to eliminate Mod and/or Ref from
-  /// the ModRef info based on the knowledge that the memory location points to
-  /// constant and/or locally-invariant memory.
-  virtual ModRefInfo getModRefInfoMask(const MemoryLocation &Loc,
-                                       AAQueryInfo &AAQI,
-                                       bool IgnoreLocals) = 0;
-
-  /// Get the ModRef info associated with a pointer argument of a callsite. The
-  /// result's bits are set to indicate the allowed aliasing ModRef kinds. Note
-  /// that these bits do not necessarily account for the overall behavior of
-  /// the function, but rather only provide additional per-argument
-  /// information.
-  virtual ModRefInfo getArgModRefInfo(const CallBase *Call,
-                                      unsigned ArgIdx) = 0;
-
-  /// Return the behavior of the given call site.
-  virtual MemoryEffects getMemoryEffects(const CallBase *Call,
-                                         AAQueryInfo &AAQI) = 0;
-
-  /// Return the behavior when calling the given function.
-  virtual MemoryEffects getMemoryEffects(const Function *F) = 0;
-
-  /// getModRefInfo (for call sites) - Return information about whether
-  /// a particular call site modifies or reads the specified memory location.
-  virtual ModRefInfo getModRefInfo(const CallBase *Call,
-                                   const MemoryLocation &Loc,
-                                   AAQueryInfo &AAQI) = 0;
-
-  /// Return information about whether two call sites may refer to the same set
-  /// of memory locations. See the AA documentation for details:
-  ///   http://llvm.org/docs/AliasAnalysis.html#ModRefInfo
-  virtual ModRefInfo getModRefInfo(const CallBase *Call1, const CallBase *Call2,
-                                   AAQueryInfo &AAQI) = 0;
-
-  /// @}
-};
 
 /// A private class template which derives from \c Concept and wraps some other
 /// type.
