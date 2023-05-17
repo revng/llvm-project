@@ -8851,7 +8851,7 @@ struct TargetOMPContext final : public llvm::omp::OMPContext {
                    const FunctionDecl *CurrentFunctionDecl,
                    ArrayRef<llvm::omp::TraitProperty> ConstructTraits);
 
-  virtual ~TargetOMPContext() = default;
+  virtual ~TargetOMPContext() override = default;
 
   /// See llvm::omp::OMPContext::matchesISATrait
   bool matchesISATrait(StringRef RawString) const override;
