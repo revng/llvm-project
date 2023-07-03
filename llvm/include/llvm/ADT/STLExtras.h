@@ -17,6 +17,7 @@
 #ifndef LLVM_ADT_STLEXTRAS_H
 #define LLVM_ADT_STLEXTRAS_H
 
+#include "llvm/ADT/ADL.h"
 #include "llvm/ADT/Hashing.h"
 #include "llvm/ADT/STLForwardCompat.h"
 #include "llvm/ADT/STLFunctionalExtras.h"
@@ -45,21 +46,6 @@
 #endif
 
 namespace llvm {
-
-// Only used by compiler if both template types are the same.  Useful when
-// using SFINAE to test for the existence of member functions.
-template <typename T, T> struct SameType;
-
-namespace detail {
-
-template <typename RangeT>
-using IterOfRange = decltype(std::begin(std::declval<RangeT &>()));
-
-template <typename RangeT>
-using ValueOfRange =
-    std::remove_reference_t<decltype(*std::begin(std::declval<RangeT &>()))>;
-
-} // end namespace detail
 
 //===----------------------------------------------------------------------===//
 //     Extra additions to <type_traits>
@@ -332,48 +318,6 @@ public:
 };
 
 } // namespace callable_detail
-
-namespace adl_detail {
-
-using std::begin;
-
-template <typename ContainerTy>
-decltype(auto) adl_begin(ContainerTy &&container) {
-  return begin(std::forward<ContainerTy>(container));
-}
-
-using std::end;
-
-template <typename ContainerTy>
-decltype(auto) adl_end(ContainerTy &&container) {
-  return end(std::forward<ContainerTy>(container));
-}
-
-using std::swap;
-
-template <typename T>
-void adl_swap(T &&lhs, T &&rhs) noexcept(noexcept(swap(std::declval<T>(),
-                                                       std::declval<T>()))) {
-  swap(std::forward<T>(lhs), std::forward<T>(rhs));
-}
-
-} // end namespace adl_detail
-
-template <typename ContainerTy>
-decltype(auto) adl_begin(ContainerTy &&container) {
-  return adl_detail::adl_begin(std::forward<ContainerTy>(container));
-}
-
-template <typename ContainerTy>
-decltype(auto) adl_end(ContainerTy &&container) {
-  return adl_detail::adl_end(std::forward<ContainerTy>(container));
-}
-
-template <typename T>
-void adl_swap(T &&lhs, T &&rhs) noexcept(
-    noexcept(adl_detail::adl_swap(std::declval<T>(), std::declval<T>()))) {
-  adl_detail::adl_swap(std::forward<T>(lhs), std::forward<T>(rhs));
-}
 
 /// Returns true if the given container only contains a single element.
 template <typename ContainerTy> bool hasSingleElement(ContainerTy &&C) {
