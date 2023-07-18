@@ -277,6 +277,17 @@ def LLVM_CoroResumeOp : LLVM_IntrOp<"coro.resume", [], [], [], 0> {
 }
 
 //
+// Saturation Arithmetic Intrinsics.
+//
+
+def LLVM_SAddSat : LLVM_BinarySameArgsIntrOpI<"sadd.sat">;
+def LLVM_UAddSat : LLVM_BinarySameArgsIntrOpI<"uadd.sat">;
+def LLVM_SSubSat : LLVM_BinarySameArgsIntrOpI<"ssub.sat">;
+def LLVM_USubSat : LLVM_BinarySameArgsIntrOpI<"usub.sat">;
+def LLVM_SSHLSat : LLVM_BinarySameArgsIntrOpI<"sshl.sat">;
+def LLVM_USHLSat : LLVM_BinarySameArgsIntrOpI<"ushl.sat">;
+
+//
 // Debug function intrinsics.
 //
 
