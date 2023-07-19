@@ -68,6 +68,12 @@ public:
     return std::move(vector_);
   }
 
+  /// Clear the SetVector and return the underlying set.
+  Set takeSet() {
+    vector_.clear();
+    return std::move(set_);
+  }
+
   /// Determine if the SetVector is empty or not.
   bool empty() const {
     return vector_.empty();
