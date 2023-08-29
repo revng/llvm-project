@@ -362,7 +362,7 @@ bool FunctionPassManagerImpl::run(Function &F) {
   initializeAllAnalysisInfo();
   Task T(getNumContainedManagers(), "Run function pass managers");
   for (unsigned Index = 0; Index < getNumContainedManagers(); ++Index) {
-    T.advance();
+    T.advance(Twine("FPM index: ") + Twine(Index));
     Changed |= getContainedManager(Index)->runOnFunction(F);
     F.getContext().yield();
   }
@@ -539,7 +539,7 @@ bool PassManagerImpl::run(Module &M) {
   initializeAllAnalysisInfo();
   Task T(getNumContainedManagers(), "Run module pass managers");
   for (unsigned Index = 0; Index < getNumContainedManagers(); ++Index) {
-    T.advance();
+    T.advance(Twine("MPM index: ") + Twine(Index));
     Changed |= getContainedManager(Index)->runOnModule(M);
     M.getContext().yield();
   }

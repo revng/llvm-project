@@ -4617,7 +4617,7 @@ static bool combineInstructionsOverFunction(
     ++NumWorklistIterations;
     ++Iteration;
 
-    T.advance();
+    T.advance(Twine("Iteration: ") + Twine(Iteration));
 
     if (Iteration > InfiniteLoopDetectionThreshold) {
       report_fatal_error(
