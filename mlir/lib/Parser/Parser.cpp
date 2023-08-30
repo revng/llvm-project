@@ -90,7 +90,9 @@ LogicalResult mlir::parseSourceFile(
 LogicalResult mlir::parseSourceString(llvm::StringRef sourceStr, Block *block,
                                       const ParserConfig &config,
                                       LocationAttr *sourceFileLoc) {
-  auto memBuffer = llvm::MemoryBuffer::getMemBuffer(sourceStr);
+  auto memBuffer =
+      llvm::MemoryBuffer::getMemBuffer(sourceStr, "",
+                                       /*RequiresNullTerminator=*/false);
   if (!memBuffer)
     return failure();
 
