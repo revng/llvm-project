@@ -347,19 +347,10 @@ struct SemiNCAInfoOnView {
     return GraphTraits<typename DomTreeT::ParentPtr>::getEntryNode(DT.Parent);
   }
 
-  // Finds all roots without relaying on the set of roots already stored in the
-  // tree.
-  // We define roots to be some non-redundant set of the CFG nodes
-  static RootsT FindRoots(const DomTreeT &DT, BatchUpdatePtr BUI) {
-    assert(DT.Parent && "Parent pointer is not set");
+  // We factor the code of `FindRoots` for postdominators in this static
+  // function so we can constexpr away it when instantiating it on a dominator.
+  static RootsT FindRootsPostDom(const DomTreeT &DT, BatchUpdatePtr BUI) {
     RootsT Roots;
-
-    // For dominators, function entry CFG node is always a tree root node.
-    if (!IsPostDom) {
-      Roots.push_back(GetEntryNode(DT));
-      return Roots;
-    }
-
     SemiNCAInfoOnView SNCA(BUI);
 
     // PostDominatorTree always has a virtual root.
@@ -495,6 +486,24 @@ struct SemiNCAInfoOnView {
                << BlockNamePrinter(Root) << " ");
     LLVM_DEBUG(dbgs() << "\n");
 
+    return Roots;
+  }
+
+  // Finds all roots without relaying on the set of roots already stored in the
+  // tree.
+  // We define roots to be some non-redundant set of the CFG nodes
+  static RootsT FindRoots(const DomTreeT &DT, BatchUpdatePtr BUI) {
+    assert(DT.Parent && "Parent pointer is not set");
+
+    // We avoid compiling the code handling postdominators, when instantiating a
+    // dominator.
+    if constexpr (IsPostDom) {
+      return FindRootsPostDom(DT, BUI);
+    }
+
+    // For dominators, function entry CFG node is always a tree root node.
+    RootsT Roots;
+    Roots.push_back(GetEntryNode(DT));
     return Roots;
   }
 
