@@ -8,7 +8,7 @@ include(GetLibraryName)
 # check if the current platform is able to compile global std::mutex with this
 # flag (Linux can, Darwin can't for example).
 check_cxx_compiler_flag("-Werror=global-constructors" HAS_WERROR_GLOBAL_CTORS)
-if (HAS_WERROR_GLOBAL_CTORS)
+if (FALSE)
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=global-constructors")
   CHECK_CXX_SOURCE_COMPILES("
   #include <mutex>
