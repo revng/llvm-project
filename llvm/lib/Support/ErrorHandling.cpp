@@ -25,6 +25,7 @@
 #include "llvm/Support/Threading.h"
 #include "llvm/Support/WindowsError.h"
 #include "llvm/Support/raw_ostream.h"
+#include <atomic>
 #include <cassert>
 #include <cstdlib>
 #include <mutex>
@@ -70,6 +71,7 @@ static fatal_error_handler_t BadAllocErrorHandler = nullptr;
 static void *BadAllocErrorHandlerUserData = nullptr;
 
 static MemoryReserver OOMReservedMemory(1024);
+static std::atomic_bool BadAllocCalled(false);
 
 #if LLVM_ENABLE_THREADS == 1
 // Mutexes to synchronize installing error handlers and calling error handlers.
@@ -172,6 +174,7 @@ void llvm::remove_bad_alloc_error_handler() {
 void llvm::report_bad_alloc_error(const char *Reason, bool GenCrashDiag) {
   fatal_error_handler_t Handler = nullptr;
   void *HandlerData = nullptr;
+  bool BadAllocCalledPrev = BadAllocCalled.exchange(true);
   {
     // Only acquire the mutex while reading the handler, so as not to invoke a
     // user-supplied callback under a lock.
@@ -199,7 +202,9 @@ void llvm::report_bad_alloc_error(const char *Reason, bool GenCrashDiag) {
   (void)!::write(2, OOMMessage, strlen(OOMMessage));
   (void)!::write(2, Reason, strlen(Reason));
   (void)!::write(2, Newline, strlen(Newline));
-  sys::PrintStackTrace(llvm::errs());
+  if (not BadAllocCalledPrev) {
+    sys::PrintStackTrace(llvm::errs());
+  }
   ::_Exit(235);
 #endif
 }
