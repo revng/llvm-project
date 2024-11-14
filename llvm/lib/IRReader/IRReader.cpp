@@ -12,6 +12,7 @@
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
+#include "llvm/Support/Compression.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/Timer.h"
@@ -66,9 +67,10 @@ std::unique_ptr<Module> llvm::getLazyIRFileModule(StringRef Filename,
                          ShouldLazyLoadMetadata);
 }
 
-std::unique_ptr<Module> llvm::parseIR(MemoryBufferRef Buffer, SMDiagnostic &Err,
-                                      LLVMContext &Context,
-                                      ParserCallbacks Callbacks) {
+static std::unique_ptr<Module> parseIRImpl(MemoryBufferRef Buffer,
+                                           SMDiagnostic &Err,
+                                           LLVMContext &Context,
+                                           ParserCallbacks Callbacks) {
   NamedRegionTimer T(TimeIRParsingName, TimeIRParsingDescription,
                      TimeIRParsingGroupName, TimeIRParsingGroupDescription,
                      TimePassesIsEnabled);
@@ -89,6 +91,36 @@ std::unique_ptr<Module> llvm::parseIR(MemoryBufferRef Buffer, SMDiagnostic &Err,
   return parseAssembly(Buffer, Err, Context, nullptr,
                        Callbacks.DataLayout.value_or(
                            [](StringRef, StringRef) { return std::nullopt; }));
+}
+
+std::unique_ptr<Module> llvm::parseIR(MemoryBufferRef Buffer, SMDiagnostic &Err,
+                                      LLVMContext &Context,
+                                      ParserCallbacks Callbacks) {
+  llvm::ArrayRef<uint8_t> BufferRef(
+      reinterpret_cast<const uint8_t *>(Buffer.getBufferStart()),
+      reinterpret_cast<const uint8_t *>(Buffer.getBufferEnd()));
+  if (compression::zstd::isAvailable() &&
+      compression::zstd::isZstd(BufferRef)) {
+    SmallVector<uint8_t> DecompressedBuffer;
+    Error Error = compression::zstd::decompress(BufferRef, DecompressedBuffer);
+    if (Error) {
+      handleAllErrors(std::move(Error), [&](ErrorInfoBase &EIB) {
+        Err = SMDiagnostic(Buffer.getBufferIdentifier(), SourceMgr::DK_Error,
+                           EIB.message());
+      });
+      return nullptr;
+    }
+
+    std::string Identifier =
+        Buffer.getBufferIdentifier().str() + "-decompressed";
+    MemoryBufferRef DecompressedBufferRef(
+        {reinterpret_cast<const char *>(DecompressedBuffer.data()),
+         DecompressedBuffer.size()},
+        Identifier);
+    return parseIRImpl(DecompressedBufferRef, Err, Context, Callbacks);
+  } else {
+    return parseIRImpl(Buffer, Err, Context, Callbacks);
+  }
 }
 
 std::unique_ptr<Module> llvm::parseIRFile(StringRef Filename, SMDiagnostic &Err,
