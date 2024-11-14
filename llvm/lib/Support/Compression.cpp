@@ -159,6 +159,11 @@ Error zlib::decompress(ArrayRef<uint8_t> Input,
 }
 #endif
 
+bool zstd::isZstd(ArrayRef<uint8_t> Input) {
+  static uint8_t Magic[] = {0x28, 0xb5, 0x2f, 0xfd};
+  return ::memcmp(Input.data(), Magic, 4) == 0;
+}
+
 #if LLVM_ENABLE_ZSTD
 
 bool zstd::isAvailable() { return true; }
@@ -202,6 +207,78 @@ Error zstd::decompress(ArrayRef<uint8_t> Input,
   return E;
 }
 
+static void zstdContextFree(ZSTD_DCtx *Ctx) {
+  size_t RC = ::ZSTD_freeDCtx(Ctx);
+  assert(::ZSTD_isError(RC) == 0);
+}
+
+static Expected<bool>
+zstdDecompressRead(::ZSTD_DCtx *Ctx, ::ZSTD_inBuffer &ZSTDInput,
+                   SmallVector<char> &Buffer,
+                   SmallVectorImpl<uint8_t> &Decompressed) {
+  ::ZSTD_outBuffer ZSTDOutput = {
+      .dst = Buffer.data(), .size = Buffer.size(), .pos = 0};
+  size_t Res = ::ZSTD_decompressStream(Ctx, &ZSTDOutput, &ZSTDInput);
+  if (::ZSTD_isError(Res)) {
+    return make_error<StringError>(::ZSTD_getErrorName(Res),
+                                   inconvertibleErrorCode());
+  }
+
+  // Check if the buffer was filled, this might not happen in all iterations
+  // because the data read might still reside in the internal state of the
+  // decompressor
+  if (ZSTDOutput.pos > 0) {
+    Decompressed.append(Buffer.begin(), Buffer.begin() + ZSTDOutput.pos);
+    return true;
+  }
+  return false;
+}
+
+Error zstd::decompress(ArrayRef<uint8_t> Input,
+                       SmallVectorImpl<uint8_t> &Output) {
+  auto &Decompressed = Output;
+  std::unique_ptr<::ZSTD_DCtx, void (*)(::ZSTD_DCtx *)> Ctx(::ZSTD_createDCtx(),
+                                                            zstdContextFree);
+  size_t Res = ::ZSTD_initDStream(&*Ctx);
+  if (::ZSTD_isError(Res))
+    return make_error<StringError>(::ZSTD_getErrorName(Res),
+                                   inconvertibleErrorCode());
+
+  // Create a buffer, this will be filled up repeatedly by
+  // ZSTD_decompressStream and appended to Output
+  SmallVector<char> Buffer;
+  Buffer.resize_for_overwrite(4096);
+
+  ::ZSTD_inBuffer ZSTDInput = {
+      .src = Input.data(), .size = Input.size(), .pos = 0};
+
+  // First loop, read the entirety of `InputBuffer`. Stop when
+  // ZSTD_decompressedStream reports pos to be equal to size. This signals that
+  // all the data has been read and is at least in the internal state of the
+  // decompressor.
+  while (ZSTDInput.pos < ZSTDInput.size) {
+    Expected<bool> Err =
+        zstdDecompressRead(&*Ctx, ZSTDInput, Buffer, Decompressed);
+    if (!Err)
+      return Err.takeError();
+  }
+
+  // Second loop, in this one there isn't any data to read, but there still
+  // might be data to be outputted from the decompressor internal state
+  ZSTDInput = {.src = nullptr, .size = 0, .pos = 0};
+  while (true) {
+    Expected<bool> MaybeRes =
+        zstdDecompressRead(&*Ctx, ZSTDInput, Buffer, Decompressed);
+    if (!MaybeRes)
+      return MaybeRes.takeError();
+    // If this if is taken it means that the decompress function did not write
+    // anything, which means that there isn't more data to decompress
+    if (!MaybeRes.get())
+      break;
+  }
+  return Error::success();
+}
+
 #else
 bool zstd::isAvailable() { return false; }
 void zstd::compress(ArrayRef<uint8_t> Input,
@@ -215,6 +292,10 @@ Error zstd::decompress(ArrayRef<uint8_t> Input, uint8_t *Output,
 Error zstd::decompress(ArrayRef<uint8_t> Input,
                        SmallVectorImpl<uint8_t> &Output,
                        size_t UncompressedSize) {
+  llvm_unreachable("zstd::decompress is unavailable");
+}
+Error zstd::decompress(ArrayRef<uint8_t> Input,
+                       SmallVectorImpl<uint8_t> &Output) {
   llvm_unreachable("zstd::decompress is unavailable");
 }
 #endif

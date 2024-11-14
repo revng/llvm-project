@@ -61,6 +61,9 @@ constexpr int BestSizeCompression = 12;
 
 bool isAvailable();
 
+// Will return true if the buffer begins with the zstd magic sequence
+bool isZstd(ArrayRef<uint8_t> Input);
+
 void compress(ArrayRef<uint8_t> Input,
               SmallVectorImpl<uint8_t> &CompressedBuffer,
               int Level = DefaultCompression);
@@ -70,6 +73,12 @@ Error decompress(ArrayRef<uint8_t> Input, uint8_t *Output,
 
 Error decompress(ArrayRef<uint8_t> Input, SmallVectorImpl<uint8_t> &Output,
                  size_t UncompressedSize);
+
+// This version of decompress does not require knowing the uncompressed size
+// ahead of time, this makes it more flexible than the two versions above but
+// also more dangerous since it makes the program more susceptible to running
+// out of memory.
+Error decompress(ArrayRef<uint8_t> Input, SmallVectorImpl<uint8_t> &Output);
 
 } // End of namespace zstd
 
