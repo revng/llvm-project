@@ -31,8 +31,8 @@
 
 namespace llvm {
 
-template <typename ContextT>
-bool GenericCycle<ContextT>::contains(const GenericCycle *C) const {
+template <typename ContextT, typename GraphView>
+bool GenericCycle<ContextT, GraphView>::contains(const GenericCycle *C) const {
   if (!C)
     return false;
 
@@ -43,14 +43,15 @@ bool GenericCycle<ContextT>::contains(const GenericCycle *C) const {
   return this == C;
 }
 
-template <typename ContextT>
-void GenericCycle<ContextT>::getExitBlocks(
+template <typename ContextT, typename GraphView>
+void GenericCycle<ContextT, GraphView>::getExitBlocks(
     SmallVectorImpl<BlockT *> &TmpStorage) const {
   TmpStorage.clear();
 
   size_t NumExitBlocks = 0;
   for (BlockT *Block : blocks()) {
-    llvm::append_range(TmpStorage, successors(Block));
+    auto BlockSuccessors = llvm::children<GraphView>(Block);
+    llvm::append_range(TmpStorage, BlockSuccessors);
 
     for (size_t Idx = NumExitBlocks, End = TmpStorage.size(); Idx < End;
          ++Idx) {
@@ -66,8 +67,8 @@ void GenericCycle<ContextT>::getExitBlocks(
   }
 }
 
-template <typename ContextT>
-auto GenericCycle<ContextT>::getCyclePreheader() const -> BlockT * {
+template <typename ContextT, typename GraphView>
+auto GenericCycle<ContextT, GraphView>::getCyclePreheader() const -> BlockT * {
   BlockT *Predecessor = getCyclePredecessor();
   if (!Predecessor)
     return nullptr;
@@ -84,8 +85,9 @@ auto GenericCycle<ContextT>::getCyclePreheader() const -> BlockT * {
   return Predecessor;
 }
 
-template <typename ContextT>
-auto GenericCycle<ContextT>::getCyclePredecessor() const -> BlockT * {
+template <typename ContextT, typename GraphView>
+auto GenericCycle<ContextT, GraphView>::getCyclePredecessor() const
+    -> BlockT * {
   if (!isReducible())
     return nullptr;
 
@@ -93,7 +95,8 @@ auto GenericCycle<ContextT>::getCyclePredecessor() const -> BlockT * {
 
   // Loop over the predecessors of the header node...
   BlockT *Header = getHeader();
-  for (const auto Pred : predecessors(Header)) {
+  auto BlockPredecessors = llvm::children<llvm::Inverse<GraphView>>(Header);
+  for (const auto Pred : BlockPredecessors) {
     if (!contains(Pred)) {
       if (Out && Out != Pred)
         return nullptr;
@@ -105,9 +108,9 @@ auto GenericCycle<ContextT>::getCyclePredecessor() const -> BlockT * {
 }
 
 /// \brief Helper class for computing cycle information.
-template <typename ContextT> class GenericCycleInfoCompute {
+template <typename ContextT, typename GraphView> class GenericCycleInfoCompute {
   using BlockT = typename ContextT::BlockT;
-  using CycleInfoT = GenericCycleInfo<ContextT>;
+  using CycleInfoT = GenericCycleInfo<ContextT, GraphView>;
   using CycleT = typename CycleInfoT::CycleT;
 
   CycleInfoT &Info;
@@ -143,9 +146,9 @@ private:
   void dfs(BlockT *EntryBlock);
 };
 
-template <typename ContextT>
-auto GenericCycleInfo<ContextT>::getTopLevelParentCycle(BlockT *Block)
-    -> CycleT * {
+template <typename ContextT, typename GraphView>
+auto GenericCycleInfo<ContextT, GraphView>::getTopLevelParentCycle(
+    BlockT *Block) -> CycleT * {
   auto Cycle = BlockMapTopLevel.find(Block);
   if (Cycle != BlockMapTopLevel.end())
     return Cycle->second;
@@ -161,9 +164,9 @@ auto GenericCycleInfo<ContextT>::getTopLevelParentCycle(BlockT *Block)
   return C;
 }
 
-template <typename ContextT>
-void GenericCycleInfo<ContextT>::moveTopLevelCycleToNewParent(CycleT *NewParent,
-                                                              CycleT *Child) {
+template <typename ContextT, typename GraphView>
+void GenericCycleInfo<ContextT, GraphView>::moveTopLevelCycleToNewParent(
+    CycleT *NewParent, CycleT *Child) {
   assert((!Child->ParentCycle && !NewParent->ParentCycle) &&
          "NewParent and Child must be both top level cycle!\n");
   auto &CurrentContainer =
@@ -186,8 +189,8 @@ void GenericCycleInfo<ContextT>::moveTopLevelCycleToNewParent(CycleT *NewParent,
 }
 
 /// \brief Main function of the cycle info computations.
-template <typename ContextT>
-void GenericCycleInfoCompute<ContextT>::run(BlockT *EntryBlock) {
+template <typename ContextT, typename GraphView>
+void GenericCycleInfoCompute<ContextT, GraphView>::run(BlockT *EntryBlock) {
   LLVM_DEBUG(errs() << "Entry block: " << Info.Context.print(EntryBlock)
                     << "\n");
   dfs(EntryBlock);
@@ -197,7 +200,9 @@ void GenericCycleInfoCompute<ContextT>::run(BlockT *EntryBlock) {
   for (BlockT *HeaderCandidate : llvm::reverse(BlockPreorder)) {
     const DFSInfo CandidateInfo = BlockDFSInfo.lookup(HeaderCandidate);
 
-    for (BlockT *Pred : predecessors(HeaderCandidate)) {
+    auto BlockPredecessors =
+        llvm::children<llvm::Inverse<GraphView>>(HeaderCandidate);
+    for (BlockT *Pred : BlockPredecessors) {
       const DFSInfo PredDFSInfo = BlockDFSInfo.lookup(Pred);
       if (CandidateInfo.isAncestorOf(PredDFSInfo))
         Worklist.push_back(Pred);
@@ -221,7 +226,8 @@ void GenericCycleInfoCompute<ContextT>::run(BlockT *EntryBlock) {
       LLVM_DEBUG(errs() << "  block " << Info.Context.print(Block) << ": ");
 
       bool IsEntry = false;
-      for (BlockT *Pred : predecessors(Block)) {
+      auto BlockPredecessors = llvm::children<llvm::Inverse<GraphView>>(Block);
+      for (BlockT *Pred : BlockPredecessors) {
         const DFSInfo PredDFSInfo = BlockDFSInfo.lookup(Pred);
         if (CandidateInfo.isAncestorOf(PredDFSInfo)) {
           Worklist.push_back(Pred);
@@ -286,8 +292,9 @@ void GenericCycleInfoCompute<ContextT>::run(BlockT *EntryBlock) {
 }
 
 /// \brief Recompute depth values of \p SubTree and all descendants.
-template <typename ContextT>
-void GenericCycleInfoCompute<ContextT>::updateDepth(CycleT *SubTree) {
+template <typename ContextT, typename GraphView>
+void GenericCycleInfoCompute<ContextT, GraphView>::updateDepth(
+    CycleT *SubTree) {
   for (CycleT *Cycle : depth_first(SubTree))
     Cycle->Depth = Cycle->ParentCycle ? Cycle->ParentCycle->Depth + 1 : 1;
 }
@@ -295,8 +302,8 @@ void GenericCycleInfoCompute<ContextT>::updateDepth(CycleT *SubTree) {
 /// \brief Compute a DFS of basic blocks starting at the function entry.
 ///
 /// Fills BlockDFSInfo with start/end counters and BlockPreorder.
-template <typename ContextT>
-void GenericCycleInfoCompute<ContextT>::dfs(BlockT *EntryBlock) {
+template <typename ContextT, typename GraphView>
+void GenericCycleInfoCompute<ContextT, GraphView>::dfs(BlockT *EntryBlock) {
   SmallVector<unsigned, 8> DFSTreeStack;
   SmallVector<BlockT *, 8> TraverseStack;
   unsigned Counter = 0;
@@ -315,7 +322,8 @@ void GenericCycleInfoCompute<ContextT>::dfs(BlockT *EntryBlock) {
                         << TraverseStack.size() << "\n");
 
       DFSTreeStack.emplace_back(TraverseStack.size());
-      llvm::append_range(TraverseStack, successors(Block));
+      auto BlockSuccessors = llvm::children<GraphView>(Block);
+      llvm::append_range(TraverseStack, BlockSuccessors);
 
       bool Added = BlockDFSInfo.try_emplace(Block, ++Counter).second;
       (void)Added;
@@ -345,16 +353,17 @@ void GenericCycleInfoCompute<ContextT>::dfs(BlockT *EntryBlock) {
 }
 
 /// \brief Reset the object to its initial state.
-template <typename ContextT> void GenericCycleInfo<ContextT>::clear() {
+template <typename ContextT, typename GraphView>
+void GenericCycleInfo<ContextT, GraphView>::clear() {
   TopLevelCycles.clear();
   BlockMap.clear();
   BlockMapTopLevel.clear();
 }
 
 /// \brief Compute the cycle info for a function.
-template <typename ContextT>
-void GenericCycleInfo<ContextT>::compute(FunctionT &F) {
-  GenericCycleInfoCompute<ContextT> Compute(*this);
+template <typename ContextT, typename GraphView>
+void GenericCycleInfo<ContextT, GraphView>::compute(FunctionT &F) {
+  GenericCycleInfoCompute<ContextT, GraphView> Compute(*this);
   Context.setFunction(F);
 
   LLVM_DEBUG(errs() << "Computing cycles for function: " << F.getName()
@@ -368,8 +377,8 @@ void GenericCycleInfo<ContextT>::compute(FunctionT &F) {
 ///
 /// \returns the innermost cycle containing \p Block or nullptr if
 ///          it is not contained in any cycle.
-template <typename ContextT>
-auto GenericCycleInfo<ContextT>::getCycle(const BlockT *Block) const
+template <typename ContextT, typename GraphView>
+auto GenericCycleInfo<ContextT, GraphView>::getCycle(const BlockT *Block) const
     -> CycleT * {
   auto MapIt = BlockMap.find(Block);
   if (MapIt != BlockMap.end())
@@ -381,8 +390,9 @@ auto GenericCycleInfo<ContextT>::getCycle(const BlockT *Block) const
 ///
 /// \returns the depth for the innermost cycle containing \p Block or 0 if it is
 ///          not contained in any cycle.
-template <typename ContextT>
-unsigned GenericCycleInfo<ContextT>::getCycleDepth(const BlockT *Block) const {
+template <typename ContextT, typename GraphView>
+unsigned GenericCycleInfo<ContextT, GraphView>::getCycleDepth(
+    const BlockT *Block) const {
   CycleT *Cycle = getCycle(Block);
   if (!Cycle)
     return 0;
@@ -394,8 +404,8 @@ unsigned GenericCycleInfo<ContextT>::getCycleDepth(const BlockT *Block) const {
 ///
 /// Note that this does \em not check that cycles are really cycles in the CFG,
 /// or that the right set of cycles in the CFG were found.
-template <typename ContextT>
-bool GenericCycleInfo<ContextT>::validateTree() const {
+template <typename ContextT, typename GraphView>
+bool GenericCycleInfo<ContextT, GraphView>::validateTree() const {
   DenseSet<BlockT *> Blocks;
   DenseSet<BlockT *> Entries;
 
@@ -458,8 +468,8 @@ bool GenericCycleInfo<ContextT>::validateTree() const {
 #endif
 
 /// \brief Print the cycle info.
-template <typename ContextT>
-void GenericCycleInfo<ContextT>::print(raw_ostream &Out) const {
+template <typename ContextT, typename GraphView>
+void GenericCycleInfo<ContextT, GraphView>::print(raw_ostream &Out) const {
   for (const auto *TLC : toplevel_cycles()) {
     for (const CycleT *Cycle : depth_first(TLC)) {
       for (unsigned I = 0; I < Cycle->Depth; ++I)
