@@ -34,6 +34,7 @@
 #include "llvm/ADT/GraphTraits.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/iterator.h"
+#include "llvm/IR/BasicBlock.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/Printable.h"
 #include "llvm/Support/raw_ostream.h"
@@ -41,16 +42,19 @@
 
 namespace llvm {
 
-template <typename ContextT> class GenericCycleInfo;
-template <typename ContextT> class GenericCycleInfoCompute;
+template <typename ContextT, typename GraphView = typename ContextT::BlockT *>
+class GenericCycleInfo;
+template <typename ContextT, typename GraphView = typename ContextT::BlockT *>
+class GenericCycleInfoCompute;
 
 /// A possibly irreducible generalization of a \ref Loop.
-template <typename ContextT> class GenericCycle {
+template <typename ContextT, typename GraphView = typename ContextT::BlockT *>
+class GenericCycle {
 public:
   using BlockT = typename ContextT::BlockT;
   using FunctionT = typename ContextT::FunctionT;
-  template <typename> friend class GenericCycleInfo;
-  template <typename> friend class GenericCycleInfoCompute;
+  template <typename, typename> friend class GenericCycleInfo;
+  template <typename, typename> friend class GenericCycleInfoCompute;
 
 private:
   /// The parent cycle. Is null for the root "cycle". Top-level cycles point
@@ -223,13 +227,15 @@ public:
 };
 
 /// \brief Cycle information for a function.
-template <typename ContextT> class GenericCycleInfo {
+/// \tparam GraphView A graph view which is used, through `GraphTraits`, as the
+///                   the graph on which `GenericCycleInfo` is computed.
+template <typename ContextT, typename GraphView> class GenericCycleInfo {
 public:
   using BlockT = typename ContextT::BlockT;
-  using CycleT = GenericCycle<ContextT>;
+  using CycleT = GenericCycle<ContextT, GraphView>;
   using FunctionT = typename ContextT::FunctionT;
-  template <typename> friend class GenericCycle;
-  template <typename> friend class GenericCycleInfoCompute;
+  template <typename, typename> friend class GenericCycle;
+  template <typename, typename> friend class GenericCycleInfoCompute;
 
 private:
   ContextT Context;
@@ -343,14 +349,16 @@ template <typename CycleRefT, typename ChildIteratorT> struct CycleGraphTraits {
   //    Return total number of nodes in the graph
 };
 
-template <typename BlockT>
-struct GraphTraits<const GenericCycle<BlockT> *>
-    : CycleGraphTraits<const GenericCycle<BlockT> *,
-                       typename GenericCycle<BlockT>::const_child_iterator> {};
-template <typename BlockT>
-struct GraphTraits<GenericCycle<BlockT> *>
-    : CycleGraphTraits<GenericCycle<BlockT> *,
-                       typename GenericCycle<BlockT>::const_child_iterator> {};
+template <typename BlockT, typename GraphView>
+struct GraphTraits<const GenericCycle<BlockT, GraphView> *>
+    : CycleGraphTraits<
+          const GenericCycle<BlockT, GraphView> *,
+          typename GenericCycle<BlockT, GraphView>::const_child_iterator> {};
+template <typename BlockT, typename GraphView>
+struct GraphTraits<GenericCycle<BlockT, GraphView> *>
+    : CycleGraphTraits<
+          GenericCycle<BlockT, GraphView> *,
+          typename GenericCycle<BlockT, GraphView>::const_child_iterator> {};
 
 } // namespace llvm
 
