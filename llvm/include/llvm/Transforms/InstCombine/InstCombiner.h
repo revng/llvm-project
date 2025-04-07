@@ -30,6 +30,8 @@
 #define DEBUG_TYPE "instcombine"
 #include "llvm/Transforms/Utils/InstructionWorklist.h"
 
+extern llvm::cl::opt<unsigned> MaxArraySize;
+
 namespace llvm {
 
 class AAResults;

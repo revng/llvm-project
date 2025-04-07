@@ -768,14 +768,7 @@ static Instruction *unpackLoadToAggregate(InstCombinerImpl &IC, LoadInst &LI) {
   }
 
   if (auto *AT = dyn_cast<ArrayType>(T)) {
-    auto *ET = AT->getElementType();
     auto NumElements = AT->getNumElements();
-    if (NumElements == 1) {
-      LoadInst *NewLoad = IC.combineLoadToNewType(LI, ET, ".unpack");
-      NewLoad->setAAMetadata(LI.getAAMetadata());
-      return IC.replaceInstUsesWith(LI, IC.Builder.CreateInsertValue(
-        PoisonValue::get(T), NewLoad, 0, Name));
-    }
 
     // Bail out if the array is too large. Ideally we would like to optimize
     // arrays of arbitrary size but this has a terrible impact on compile time.
@@ -783,6 +776,14 @@ static Instruction *unpackLoadToAggregate(InstCombinerImpl &IC, LoadInst &LI) {
     // tuning.
     if (NumElements > IC.MaxArraySizeForCombine)
       return nullptr;
+
+    auto *ET = AT->getElementType();
+    if (NumElements == 1) {
+      LoadInst *NewLoad = IC.combineLoadToNewType(LI, ET, ".unpack");
+      NewLoad->setAAMetadata(LI.getAAMetadata());
+      return IC.replaceInstUsesWith(LI, IC.Builder.CreateInsertValue(
+        PoisonValue::get(T), NewLoad, 0, Name));
+    }
 
     const DataLayout &DL = IC.getDataLayout();
     auto EltSize = DL.getTypeAllocSize(ET);
@@ -1291,13 +1292,7 @@ static bool unpackStoreToAggregate(InstCombinerImpl &IC, StoreInst &SI) {
   }
 
   if (auto *AT = dyn_cast<ArrayType>(T)) {
-    // If the array only have one element, we unpack.
     auto NumElements = AT->getNumElements();
-    if (NumElements == 1) {
-      V = IC.Builder.CreateExtractValue(V, 0);
-      combineStoreToNewValue(IC, SI, V);
-      return true;
-    }
 
     // Bail out if the array is too large. Ideally we would like to optimize
     // arrays of arbitrary size but this has a terrible impact on compile time.
@@ -1306,6 +1301,12 @@ static bool unpackStoreToAggregate(InstCombinerImpl &IC, StoreInst &SI) {
     if (NumElements > IC.MaxArraySizeForCombine)
       return false;
 
+    // If the array only have one element, we unpack.
+    if (NumElements == 1) {
+      V = IC.Builder.CreateExtractValue(V, 0);
+      combineStoreToNewValue(IC, SI, V);
+      return true;
+    }
     const DataLayout &DL = IC.getDataLayout();
     auto EltSize = DL.getTypeAllocSize(AT->getElementType());
     const auto Align = SI.getAlign();
