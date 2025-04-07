@@ -118,6 +118,12 @@ STATISTIC(NumVectorized, "Number of vectorized aggregates");
 /// GEPs.
 static cl::opt<bool> SROAStrictInbounds("sroa-strict-inbounds", cl::init(false),
                                         cl::Hidden);
+
+cl::opt<bool>
+SROANoArrays("sroa-no-arrays",
+             cl::desc("Disables SROA for array aggregates"),
+             cl::init(false));
+
 namespace {
 /// Find linked dbg.assign and generate a new one with the correct
 /// FragmentInfo. Link Inst to the new dbg.assign.  If Value is nullptr the
@@ -882,7 +888,9 @@ private:
   }
 
   void visitLoadInst(LoadInst &LI) {
-    assert((!LI.isSimple() || LI.getType()->isSingleValueType()) &&
+    assert((!LI.isSimple() ||
+            LI.getType()->isSingleValueType() ||
+            (isa<ArrayType>(LI.getType()) && SROANoArrays)) &&
            "All simple FCA loads should have been pre-split");
 
     if (!IsOffsetKnown)
@@ -923,7 +931,9 @@ private:
       return markAsDead(SI);
     }
 
-    assert((!SI.isSimple() || ValOp->getType()->isSingleValueType()) &&
+    assert((!SI.isSimple() ||
+            ValOp->getType()->isSingleValueType() ||
+            (isa<ArrayType>(ValOp->getType()) && SROANoArrays)) &&
            "All simple FCA stores should have been pre-split");
     handleLoadOrStore(ValOp->getType(), SI, Offset, Size, SI.isVolatile());
   }
@@ -3722,6 +3732,9 @@ private:
     if (!LI.isSimple() || LI.getType()->isSingleValueType())
       return false;
 
+    if (isa<ArrayType>(LI.getType()) and SROANoArrays)
+      return false;
+
     // We have an aggregate being loaded, split it apart.
     LLVM_DEBUG(dbgs() << "    original: " << LI << "\n");
     LoadOpSplitter Splitter(&LI, *U, LI.getType(), LI.getAAMetadata(),
@@ -3791,6 +3804,9 @@ private:
       return false;
     Value *V = SI.getValueOperand();
     if (V->getType()->isSingleValueType())
+      return false;
+
+    if (isa<ArrayType>(V->getType()) and SROANoArrays)
       return false;
 
     // We have an aggregate being stored, split it apart.
