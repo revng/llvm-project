@@ -21,7 +21,10 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/ValueHandle.h"
+#include "llvm/Support/CommandLine.h"
 #include <vector>
+
+extern llvm::cl::opt<bool> SROANoArrays;
 
 namespace llvm {
 
