@@ -135,6 +135,7 @@ static constexpr unsigned InstCombineDefaultInfiniteLoopThreshold = 100;
 #else
 static constexpr unsigned InstCombineDefaultInfiniteLoopThreshold = 1000;
 #endif
+static constexpr unsigned InstCombineDefaultMaxArraySize = 1024;
 
 static cl::opt<bool>
 EnableCodeSinking("instcombine-code-sinking", cl::desc("Enable code sinking"),
@@ -155,9 +156,10 @@ static cl::opt<unsigned> InfiniteLoopDetectionThreshold(
              "infinite loop"),
     cl::init(InstCombineDefaultInfiniteLoopThreshold), cl::Hidden);
 
-static cl::opt<unsigned>
-MaxArraySize("instcombine-maxarray-size", cl::init(1024),
-             cl::desc("Maximum array size considered when doing a combine"));
+cl::opt<unsigned> MaxArraySize(
+    "instcombine-maxarray-size",
+    cl::desc("Maximum array size considered when doing a combine"),
+    cl::init(InstCombineDefaultMaxArraySize));
 
 // FIXME: Remove this flag when it is no longer necessary to convert
 // llvm.dbg.declare to avoid inaccurate debug info. Setting this to false
