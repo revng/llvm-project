@@ -377,6 +377,9 @@ public:
   /// dialect.
   void printResourceHandle(const AsmDialectResourceHandle &resource);
 
+  const void *getCurrentTypeOrAttrAlias() const;
+  void setCurrentTypeOrAttrAlias(const void *opaque);
+
   void printAffineMap(AffineMap map);
   void
   printAffineExpr(AffineExpr expr,
@@ -757,6 +760,8 @@ private:
   void printSuccessorAndUseList(Block *, ValueRange) override {}
   void shadowRegionArgs(Region &, ValueRange) override {}
 
+  const void *getCurrentTypeOrAttrAlias() const override { return nullptr; }
+
   /// The printer flags to use when determining potential aliases.
   const OpPrintingFlags &printerFlags;
 
@@ -893,6 +898,8 @@ private:
   void printKeywordOrString(StringRef) override {}
   void printSymbolName(StringRef) override {}
   void printResourceHandle(const AsmDialectResourceHandle &) override {}
+
+  const void *getCurrentTypeOrAttrAlias() const override { return nullptr; }
 
   /// The initializer to use when identifying aliases.
   AliasInitializer &initializer;
@@ -1115,6 +1122,9 @@ private:
 
   /// An allocator used for alias names.
   llvm::BumpPtrAllocator aliasAllocator;
+
+public:
+  const void *currentTypeOrAttrAlias = nullptr;
 };
 } // namespace
 
@@ -1153,6 +1163,11 @@ void AliasState::printAliases(AsmPrinter::Impl &p, NewLineCounter &newLine,
        llvm::make_filter_range(attrTypeToAlias, filterFn)) {
     alias.print(p.getStream());
     p.getStream() << " = ";
+
+    currentTypeOrAttrAlias = opaqueSymbol;
+    auto guard = llvm::make_scope_exit([&]() {
+      currentTypeOrAttrAlias = nullptr;
+    });
 
     if (alias.isTypeAlias()) {
       // TODO: Support nested aliases in mutable types.
@@ -2620,6 +2635,14 @@ void AsmPrinter::Impl::printHexString(ArrayRef<char> data) {
   printHexString(StringRef(data.data(), data.size()));
 }
 
+const void *AsmPrinter::Impl::getCurrentTypeOrAttrAlias() const {
+  return state.getAliasState().currentTypeOrAttrAlias;
+}
+
+void AsmPrinter::Impl::setCurrentTypeOrAttrAlias(const void *opaque) {
+  state.getAliasState().currentTypeOrAttrAlias = opaque;
+}
+
 //===--------------------------------------------------------------------===//
 // AsmPrinter
 //===--------------------------------------------------------------------===//
@@ -2676,6 +2699,11 @@ void AsmPrinter::printSymbolName(StringRef symbolRef) {
 void AsmPrinter::printResourceHandle(const AsmDialectResourceHandle &resource) {
   assert(impl && "expected AsmPrinter::printResourceHandle to be overriden");
   impl->printResourceHandle(resource);
+}
+
+const void *AsmPrinter::getCurrentTypeOrAttrAlias() const {
+  assert(impl && "expected AsmPrinter::getCurrentTypeOrAttrAlias to be overriden");
+  return impl->getCurrentTypeOrAttrAlias();
 }
 
 //===----------------------------------------------------------------------===//
