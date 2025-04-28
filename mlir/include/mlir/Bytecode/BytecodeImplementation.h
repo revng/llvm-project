@@ -39,6 +39,8 @@ public:
   /// Emit an error to the reader.
   virtual InFlightDiagnostic emitError(const Twine &msg = {}) = 0;
 
+  virtual MLIRContext *getContext() const = 0;
+
   /// Read out a list of elements, invoking the provided callback for each
   /// element. The callback function may be in any of the following forms:
   ///   * LogicalResult(T &)
