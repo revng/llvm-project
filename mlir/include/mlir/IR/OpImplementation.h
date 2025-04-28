@@ -213,6 +213,8 @@ public:
     printArrowTypeList(results);
   }
 
+  virtual const void *getCurrentTypeOrAttrAlias() const;
+
 protected:
   /// Initialize the printer with no internal implementation. In this case, all
   /// virtual methods of this class must be overriden.

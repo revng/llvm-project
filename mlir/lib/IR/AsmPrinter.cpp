@@ -377,6 +377,9 @@ public:
   /// dialect.
   void printResourceHandle(const AsmDialectResourceHandle &resource);
 
+  const void *getCurrentTypeOrAttrAlias() const;
+  void setCurrentTypeOrAttrAlias(const void *opaque);
+
   void printAffineMap(AffineMap map);
   void
   printAffineExpr(AffineExpr expr,
@@ -478,6 +481,10 @@ private:
   bool isType : 1;
   /// A flag indicating whether this alias may be deferred or not.
   bool isDeferrable : 1;
+
+public:
+  /// Used to avoid printing incomplete aliases for recursive types.
+  bool isPrinted = false;
 };
 
 /// This class represents a utility that initializes the set of attribute and
@@ -753,6 +760,8 @@ private:
   void printSuccessorAndUseList(Block *, ValueRange) override {}
   void shadowRegionArgs(Region &, ValueRange) override {}
 
+  const void *getCurrentTypeOrAttrAlias() const override { return nullptr; }
+
   /// The printer flags to use when determining potential aliases.
   const OpPrintingFlags &printerFlags;
 
@@ -889,6 +898,8 @@ private:
   void printKeywordOrString(StringRef) override {}
   void printSymbolName(StringRef) override {}
   void printResourceHandle(const AsmDialectResourceHandle &) override {}
+
+  const void *getCurrentTypeOrAttrAlias() const override { return nullptr; }
 
   /// The initializer to use when identifying aliases.
   AliasInitializer &initializer;
@@ -1111,6 +1122,9 @@ private:
 
   /// An allocator used for alias names.
   llvm::BumpPtrAllocator aliasAllocator;
+
+public:
+  const void *currentTypeOrAttrAlias = nullptr;
 };
 } // namespace
 
@@ -1133,6 +1147,8 @@ LogicalResult AliasState::getAlias(Type ty, raw_ostream &os) const {
   auto it = attrTypeToAlias.find(ty.getAsOpaquePointer());
   if (it == attrTypeToAlias.end())
     return failure();
+  if (!it->second.isPrinted)
+    return failure();
 
   it->second.print(os);
   return success();
@@ -1148,13 +1164,16 @@ void AliasState::printAliases(AsmPrinter::Impl &p, NewLineCounter &newLine,
     alias.print(p.getStream());
     p.getStream() << " = ";
 
+    currentTypeOrAttrAlias = opaqueSymbol;
+    auto guard = llvm::make_scope_exit([&]() {
+      currentTypeOrAttrAlias = nullptr;
+    });
+
     if (alias.isTypeAlias()) {
       // TODO: Support nested aliases in mutable types.
       Type type = Type::getFromOpaquePointer(opaqueSymbol);
-      if (type.hasTrait<TypeTrait::IsMutable>())
-        p.getStream() << type;
-      else
-        p.printTypeImpl(type);
+      p.printTypeImpl(type);
+      alias.isPrinted = true;
     } else {
       // TODO: Support nested aliases in mutable attributes.
       Attribute attr = Attribute::getFromOpaquePointer(opaqueSymbol);
@@ -2616,6 +2635,14 @@ void AsmPrinter::Impl::printHexString(ArrayRef<char> data) {
   printHexString(StringRef(data.data(), data.size()));
 }
 
+const void *AsmPrinter::Impl::getCurrentTypeOrAttrAlias() const {
+  return state.getAliasState().currentTypeOrAttrAlias;
+}
+
+void AsmPrinter::Impl::setCurrentTypeOrAttrAlias(const void *opaque) {
+  state.getAliasState().currentTypeOrAttrAlias = opaque;
+}
+
 //===--------------------------------------------------------------------===//
 // AsmPrinter
 //===--------------------------------------------------------------------===//
@@ -2672,6 +2699,11 @@ void AsmPrinter::printSymbolName(StringRef symbolRef) {
 void AsmPrinter::printResourceHandle(const AsmDialectResourceHandle &resource) {
   assert(impl && "expected AsmPrinter::printResourceHandle to be overriden");
   impl->printResourceHandle(resource);
+}
+
+const void *AsmPrinter::getCurrentTypeOrAttrAlias() const {
+  assert(impl && "expected AsmPrinter::getCurrentTypeOrAttrAlias to be overriden");
+  return impl->getCurrentTypeOrAttrAlias();
 }
 
 //===----------------------------------------------------------------------===//
