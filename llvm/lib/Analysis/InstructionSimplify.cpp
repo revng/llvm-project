@@ -6515,11 +6515,20 @@ Value *llvm::simplifyCall(CallBase *Call, const SimplifyQuery &Q) {
   if (Call->isMustTailCall())
     return nullptr;
 
-  // call undef -> poison
-  // call null -> poison
   Value *Callee = Call->getCalledOperand();
-  if (isa<UndefValue>(Callee) || isa<ConstantPointerNull>(Callee))
+
+  // call undef -> poison
+  if (isa<UndefValue>(Callee))
     return PoisonValue::get(Call->getType());
+
+  // call null -> poison, but only if Call is in a function where null pointer
+  // is undefined
+  if (isa<ConstantPointerNull>(Callee)) {
+    if (!Call->getParent() || !Call->getFunction() ||
+        !NullPointerIsDefined(Call->getFunction())) {
+      return PoisonValue::get(Call->getType());
+    }
+  }
 
   if (Value *V = tryConstantFoldCall(Call, Q))
     return V;
