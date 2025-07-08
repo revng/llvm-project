@@ -268,6 +268,8 @@ public:
     return parseBytes(static_cast<size_t>(length), sectionData);
   }
 
+  Location getLoc() const { return fileLoc; }
+
 private:
   /// Parse a variable length encoded integer from the byte stream. This method
   /// is a fallback when the number of bytes used to encode the value is greater
@@ -834,6 +836,10 @@ public:
   InFlightDiagnostic emitError(const Twine &msg) override {
     return reader.emitError(msg);
   }
+
+  MLIRContext *getContext() const override { return getLoc().getContext(); }
+
+  Location getLoc() const { return reader.getLoc(); }
 
   //===--------------------------------------------------------------------===//
   // IR
