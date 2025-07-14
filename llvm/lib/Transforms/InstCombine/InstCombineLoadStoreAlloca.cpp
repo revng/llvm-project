@@ -374,6 +374,7 @@ void PointerReplacer::replace(Instruction *I) {
     Type *NewTy = getReplacement(PHI->getIncomingValue(0))->getType();
     auto *NewPHI = PHINode::Create(NewTy, PHI->getNumIncomingValues(),
                                    PHI->getName(), PHI);
+    NewPHI->setDebugLoc(PHI->getDebugLoc());
     for (unsigned int I = 0; I < PHI->getNumIncomingValues(); ++I)
       NewPHI->addIncoming(getReplacement(PHI->getIncomingValue(I)),
                           PHI->getIncomingBlock(I));
