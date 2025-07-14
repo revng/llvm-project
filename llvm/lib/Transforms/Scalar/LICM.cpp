@@ -1739,7 +1739,9 @@ static void hoist(Instruction &I, const DominatorTree *DT, const Loop *CurLoop,
     // Move the new node to the destination block, before its terminator.
     moveInstructionBefore(I, *Dest->getTerminator(), *SafetyInfo, MSSAU, SE);
 
-  I.updateLocationAfterHoist();
+  // CONTROVERSIAL!!!!!
+  // Discarding debug information is bad (tm)!
+  // I.updateLocationAfterHoist();
 
   if (isa<LoadInst>(I))
     ++NumMovedLoads;
