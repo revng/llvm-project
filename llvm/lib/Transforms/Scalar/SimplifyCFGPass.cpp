@@ -32,6 +32,7 @@
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/DebugInfoMetadata.h"
+#include "llvm/IR/DebugLoc.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -108,6 +109,7 @@ performBlockTailMerging(Function &F, ArrayRef<BasicBlock *> BBs,
       std::get<1>(I) = PHINode::Create(std::get<0>(I)->getType(),
                                        /*NumReservedValues=*/BBs.size(),
                                        CanonicalBB->getName() + ".op");
+      std::get<1>(I)->setDebugLoc(Term->getDebugLoc());
       std::get<1>(I)->insertInto(CanonicalBB, CanonicalBB->end());
     }
     // Make it so that this canonical block actually has the right
@@ -117,6 +119,8 @@ performBlockTailMerging(Function &F, ArrayRef<BasicBlock *> BBs,
     // If the canonical terminator has operands, rewrite it to take PHI's.
     for (auto I : zip(NewOps, CanonicalTerm->operands()))
       std::get<1>(I) = std::get<0>(I);
+
+    CanonicalTerm->setDebugLoc(Term->getDebugLoc());
   }
 
   // Now, go through each block (with the current terminator type)
