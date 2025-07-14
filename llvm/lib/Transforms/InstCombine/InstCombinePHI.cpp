@@ -730,6 +730,7 @@ Instruction *InstCombinerImpl::foldPHIArgLoadIntoPHI(PHINode &PN) {
   PHINode *NewPN = PHINode::Create(FirstLI->getOperand(0)->getType(),
                                    PN.getNumIncomingValues(),
                                    PN.getName()+".in");
+  NewPN->setDebugLoc(PN.getDebugLoc());
 
   Value *InVal = FirstLI->getOperand(0);
   NewPN->addIncoming(InVal, PN.getIncomingBlock(0));
@@ -923,6 +924,7 @@ Instruction *InstCombinerImpl::foldPHIArgOpIntoPHI(PHINode &PN) {
   PHINode *NewPN = PHINode::Create(FirstInst->getOperand(0)->getType(),
                                    PN.getNumIncomingValues(),
                                    PN.getName()+".in");
+  NewPN->setDebugLoc(PN.getDebugLoc());
 
   Value *InVal = FirstInst->getOperand(0);
   NewPN->addIncoming(InVal, PN.getIncomingBlock(0));
