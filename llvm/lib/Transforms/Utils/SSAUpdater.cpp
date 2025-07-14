@@ -269,6 +269,11 @@ public:
                                SSAUpdater *Updater) {
     PHINode *PHI = PHINode::Create(Updater->ProtoType, NumPreds,
                                    Updater->ProtoName, &BB->front());
+
+    // Not the cleanest, but at the very least it ensures at least some kind of
+    // debug-information is present.
+    PHI->setDebugLoc(BB->getTerminator()->getDebugLoc());
+
     return PHI;
   }
 
