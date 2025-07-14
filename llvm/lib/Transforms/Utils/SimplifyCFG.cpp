@@ -1970,6 +1970,12 @@ static bool sinkLastInstruction(ArrayRef<BasicBlock*> Blocks) {
     for (auto *I : Insts)
       PN->addIncoming(I->getOperand(O), I->getParent());
     NewOperands.push_back(PN);
+
+    // Merge all the incoming debug locations together.
+    PN->setDebugLoc(Insts.front()->getDebugLoc());
+    for (Instruction *I : Insts)
+      if (I->getDebugLoc())
+        PN->applyMergedLocation(PN->getDebugLoc(), I->getDebugLoc());
   }
 
   // Arbitrarily use I0 as the new "common" instruction; remap its operands
