@@ -43,6 +43,7 @@
 #include "llvm/IR/Type.h"
 #include "llvm/IR/User.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/DebugInfoPreservation.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
 #include <algorithm>
@@ -959,6 +960,13 @@ bool PromoteMem2Reg::QueuePhiNode(BasicBlock *BB, unsigned AllocaNo,
   PN = PHINode::Create(Allocas[AllocaNo]->getAllocatedType(), getNumPreds(BB),
                        Allocas[AllocaNo]->getName() + "." + Twine(Version++),
                        &BB->front());
+
+  if (EnableStrictDebugInformationPreservationStyle) {
+    // Keep the debug information from the original alloca, to avoid discarding
+    // debug information.
+    PN->setDebugLoc(Allocas[AllocaNo]->getDebugLoc());
+  }
+
   ++NumPHIInsert;
   PhiToAllocaMap[PN] = AllocaNo;
   return true;
@@ -968,6 +976,11 @@ bool PromoteMem2Reg::QueuePhiNode(BasicBlock *BB, unsigned AllocaNo,
 /// create a merged location incorporating \p DL, or to set \p DL directly.
 static void updateForIncomingValueLocation(PHINode *PN, DebugLoc DL,
                                            bool ApplyMergedLoc) {
+  if (EnableStrictDebugInformationPreservationStyle and not DL) {
+    // Do not override valid debug information with an empty location.
+    return;
+  }
+
   if (ApplyMergedLoc)
     PN->applyMergedLocation(PN->getDebugLoc(), DL);
   else
