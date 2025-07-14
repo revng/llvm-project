@@ -450,6 +450,7 @@ Instruction *InstCombinerImpl::foldPHIArgBinOpIntoPHI(PHINode &PN) {
     NewLHS = PHINode::Create(LHSType, PN.getNumIncomingValues(),
                              FirstInst->getOperand(0)->getName() + ".pn");
     NewLHS->addIncoming(InLHS, PN.getIncomingBlock(0));
+    NewLHS->setDebugLoc(PN.getDebugLoc());
     InsertNewInstBefore(NewLHS, PN);
     LHSVal = NewLHS;
   }
@@ -458,6 +459,7 @@ Instruction *InstCombinerImpl::foldPHIArgBinOpIntoPHI(PHINode &PN) {
     NewRHS = PHINode::Create(RHSType, PN.getNumIncomingValues(),
                              FirstInst->getOperand(1)->getName() + ".pn");
     NewRHS->addIncoming(InRHS, PN.getIncomingBlock(0));
+    NewRHS->setDebugLoc(PN.getDebugLoc());
     InsertNewInstBefore(NewRHS, PN);
     RHSVal = NewRHS;
   }
