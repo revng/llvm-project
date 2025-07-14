@@ -27,6 +27,7 @@
 #include "llvm/IR/Value.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/DebugInfoPreservation.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/SSAUpdaterImpl.h"
 #include <cassert>
@@ -269,6 +270,13 @@ public:
                                SSAUpdater *Updater) {
     PHINode *PHI = PHINode::Create(Updater->ProtoType, NumPreds,
                                    Updater->ProtoName, &BB->front());
+
+    if (EnableStrictDebugInformationPreservationStyle) {
+      // This is not the best, the proper solution would be to accept the debug
+      // location from the callee, but this will do for now.
+      PHI->setDebugLoc(BB->getTerminator()->getDebugLoc());
+    }
+
     return PHI;
   }
 
