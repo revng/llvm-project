@@ -1465,6 +1465,7 @@ static Instruction *cloneInstructionInExitBlock(
       PHINode *OpPN =
         PHINode::Create(OInst->getType(), PN.getNumIncomingValues(),
                         OInst->getName() + ".lcssa", &ExitBlock.front());
+      OpPN->setDebugLoc(OInst->getDebugLoc());
       for (unsigned i = 0, e = PN.getNumIncomingValues(); i != e; ++i)
         OpPN->addIncoming(OInst, PN.getIncomingBlock(i));
       Op = OpPN;
