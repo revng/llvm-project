@@ -1105,13 +1105,13 @@ static void CloneInstructionsIntoPredecessorBlockAndUpdateSSAUses(
 
     Instruction *NewBonusInst = BonusInst.clone();
 
-    if (PTI->getDebugLoc() != NewBonusInst->getDebugLoc()) {
-      // Unless the instruction has the same !dbg location as the original
-      // branch, drop it. When we fold the bonus instructions we want to make
-      // sure we reset their debug locations in order to avoid stepping on
-      // dead code caused by folding dead branches.
-      NewBonusInst->setDebugLoc(DebugLoc());
-    }
+    // if (PTI->getDebugLoc() != NewBonusInst->getDebugLoc()) {
+    //   // Unless the instruction has the same !dbg location as the original
+    //   // branch, drop it. When we fold the bonus instructions we want to make
+    //   // sure we reset their debug locations in order to avoid stepping on
+    //   // dead code caused by folding dead branches.
+    //   NewBonusInst->setDebugLoc(DebugLoc());
+    // }
 
     RemapInstruction(NewBonusInst, VMap,
                      RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
