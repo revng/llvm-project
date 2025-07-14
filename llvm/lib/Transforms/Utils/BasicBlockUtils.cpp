@@ -856,6 +856,7 @@ void llvm::createPHIsForSplitLoopExit(ArrayRef<BasicBlock *> Preds,
         SplitBB->isLandingPad() ? &SplitBB->front() : SplitBB->getTerminator());
     for (BasicBlock *BB : Preds)
       NewPN->addIncoming(V, BB);
+    NewPN->setDebugLoc(PN.getDebugLoc());
 
     // Update the original PHI.
     PN.setIncomingValue(Idx, NewPN);
