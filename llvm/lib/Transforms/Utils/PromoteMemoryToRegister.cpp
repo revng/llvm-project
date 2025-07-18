@@ -959,6 +959,11 @@ bool PromoteMem2Reg::QueuePhiNode(BasicBlock *BB, unsigned AllocaNo,
   PN = PHINode::Create(Allocas[AllocaNo]->getAllocatedType(), getNumPreds(BB),
                        Allocas[AllocaNo]->getName() + "." + Twine(Version++),
                        &BB->front());
+
+  // Keep the debug information from the original alloca, to avoid discarding
+  // debug information.
+  PN->setDebugLoc(Allocas[AllocaNo]->getDebugLoc());
+
   ++NumPHIInsert;
   PhiToAllocaMap[PN] = AllocaNo;
   return true;
@@ -968,6 +973,11 @@ bool PromoteMem2Reg::QueuePhiNode(BasicBlock *BB, unsigned AllocaNo,
 /// create a merged location incorporating \p DL, or to set \p DL directly.
 static void updateForIncomingValueLocation(PHINode *PN, DebugLoc DL,
                                            bool ApplyMergedLoc) {
+  if (not DL) {
+    // Never force-remove debug information.
+    return;
+  }
+
   if (ApplyMergedLoc)
     PN->applyMergedLocation(PN->getDebugLoc(), DL);
   else

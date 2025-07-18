@@ -1265,6 +1265,7 @@ Instruction *InstCombinerImpl::foldOpIntoPhi(Instruction &I, PHINode *PN) {
   PHINode *NewPN = PHINode::Create(I.getType(), PN->getNumIncomingValues());
   InsertNewInstBefore(NewPN, *PN);
   NewPN->takeName(PN);
+  NewPN->setDebugLoc(PN->getDebugLoc());
 
   // If we are going to have to insert a new computation, do so right before the
   // predecessor's terminator.

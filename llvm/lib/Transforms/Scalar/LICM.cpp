@@ -1465,6 +1465,7 @@ static Instruction *cloneInstructionInExitBlock(
       PHINode *OpPN =
         PHINode::Create(OInst->getType(), PN.getNumIncomingValues(),
                         OInst->getName() + ".lcssa", &ExitBlock.front());
+      OpPN->setDebugLoc(OInst->getDebugLoc());
       for (unsigned i = 0, e = PN.getNumIncomingValues(); i != e; ++i)
         OpPN->addIncoming(OInst, PN.getIncomingBlock(i));
       Op = OpPN;
@@ -1738,7 +1739,9 @@ static void hoist(Instruction &I, const DominatorTree *DT, const Loop *CurLoop,
     // Move the new node to the destination block, before its terminator.
     moveInstructionBefore(I, *Dest->getTerminator(), *SafetyInfo, MSSAU, SE);
 
-  I.updateLocationAfterHoist();
+  // CONTROVERSIAL!!!!!
+  // Discarding debug information is bad (tm)!
+  // I.updateLocationAfterHoist();
 
   if (isa<LoadInst>(I))
     ++NumMovedLoads;
