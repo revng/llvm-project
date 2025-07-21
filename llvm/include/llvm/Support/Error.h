@@ -746,12 +746,10 @@ inline void cantFail(Error Err, const char *Msg = nullptr) {
   if (Err) {
     if (!Msg)
       Msg = "Failure value returned from cantFail wrapped call";
-#ifndef NDEBUG
     std::string Str;
     raw_string_ostream OS(Str);
     OS << Msg << "\n" << Err;
     Msg = OS.str().c_str();
-#endif
     llvm_unreachable(Msg);
   }
 }
@@ -776,13 +774,11 @@ T cantFail(Expected<T> ValOrErr, const char *Msg = nullptr) {
   else {
     if (!Msg)
       Msg = "Failure value returned from cantFail wrapped call";
-#ifndef NDEBUG
     std::string Str;
     raw_string_ostream OS(Str);
     auto E = ValOrErr.takeError();
     OS << Msg << "\n" << E;
     Msg = OS.str().c_str();
-#endif
     llvm_unreachable(Msg);
   }
 }
@@ -807,13 +803,11 @@ T& cantFail(Expected<T&> ValOrErr, const char *Msg = nullptr) {
   else {
     if (!Msg)
       Msg = "Failure value returned from cantFail wrapped call";
-#ifndef NDEBUG
     std::string Str;
     raw_string_ostream OS(Str);
     auto E = ValOrErr.takeError();
     OS << Msg << "\n" << E;
     Msg = OS.str().c_str();
-#endif
     llvm_unreachable(Msg);
   }
 }
