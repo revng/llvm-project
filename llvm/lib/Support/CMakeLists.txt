@@ -154,6 +154,7 @@ add_llvm_component_library(LLVMSupport
   DataExtractor.cpp
   Debug.cpp
   DebugCounter.cpp
+  DebugInfoPreservation.cpp
   DeltaAlgorithm.cpp
   DivisionByConstantInfo.cpp
   DAGDeltaAlgorithm.cpp
