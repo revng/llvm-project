@@ -201,6 +201,7 @@ add_llvm_component_library(LLVMSupport
   Progress.cpp
   RandomNumberGenerator.cpp
   Regex.cpp
+  RevngOptions.cpp
   RISCVAttributes.cpp
   RISCVAttributeParser.cpp
   RISCVISAInfo.cpp
