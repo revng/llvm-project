@@ -856,6 +856,7 @@ void llvm::createPHIsForSplitLoopExit(ArrayRef<BasicBlock *> Preds,
         SplitBB->isLandingPad() ? &SplitBB->front() : SplitBB->getTerminator());
     for (BasicBlock *BB : Preds)
       NewPN->addIncoming(V, BB);
+    NewPN->setDebugLoc(PN.getDebugLoc());
 
     // Update the original PHI.
     PN.setIncomingValue(Idx, NewPN);
@@ -1156,6 +1157,7 @@ static void UpdatePHINodes(BasicBlock *OrigBB, BasicBlock *NewBB,
     // Create the new PHI node, insert it into NewBB at the end of the block
     PHINode *NewPHI =
         PHINode::Create(PN->getType(), Preds.size(), PN->getName() + ".ph", BI);
+    NewPHI->setDebugLoc(PN->getDebugLoc());
 
     // NOTE! This loop walks backwards for a reason! First off, this minimizes
     // the cost of removal if we end up removing a large number of values, and

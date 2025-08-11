@@ -70,6 +70,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Support/MathExtras.h"
+#include "llvm/Support/RevngOptions.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
@@ -1105,12 +1106,14 @@ static void CloneInstructionsIntoPredecessorBlockAndUpdateSSAUses(
 
     Instruction *NewBonusInst = BonusInst.clone();
 
-    if (PTI->getDebugLoc() != NewBonusInst->getDebugLoc()) {
-      // Unless the instruction has the same !dbg location as the original
-      // branch, drop it. When we fold the bonus instructions we want to make
-      // sure we reset their debug locations in order to avoid stepping on
-      // dead code caused by folding dead branches.
-      NewBonusInst->setDebugLoc(DebugLoc());
+    if (not revng::RevngDebugInformationPreservationStyle) {
+      if (PTI->getDebugLoc() != NewBonusInst->getDebugLoc()) {
+        // Unless the instruction has the same !dbg location as the original
+        // branch, drop it. When we fold the bonus instructions we want to make
+        // sure we reset their debug locations in order to avoid stepping on
+        // dead code caused by folding dead branches.
+        NewBonusInst->setDebugLoc(DebugLoc());
+      }
     }
 
     RemapInstruction(NewBonusInst, VMap,
@@ -1970,6 +1973,12 @@ static bool sinkLastInstruction(ArrayRef<BasicBlock*> Blocks) {
     for (auto *I : Insts)
       PN->addIncoming(I->getOperand(O), I->getParent());
     NewOperands.push_back(PN);
+
+    // Merge all the incoming debug locations together.
+    PN->setDebugLoc(Insts.front()->getDebugLoc());
+    for (Instruction *I : Insts)
+      if (I->getDebugLoc())
+        PN->applyMergedLocation(PN->getDebugLoc(), I->getDebugLoc());
   }
 
   // Arbitrarily use I0 as the new "common" instruction; remap its operands

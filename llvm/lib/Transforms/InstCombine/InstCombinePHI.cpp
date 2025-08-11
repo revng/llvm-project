@@ -450,6 +450,7 @@ Instruction *InstCombinerImpl::foldPHIArgBinOpIntoPHI(PHINode &PN) {
     NewLHS = PHINode::Create(LHSType, PN.getNumIncomingValues(),
                              FirstInst->getOperand(0)->getName() + ".pn");
     NewLHS->addIncoming(InLHS, PN.getIncomingBlock(0));
+    NewLHS->setDebugLoc(PN.getDebugLoc());
     InsertNewInstBefore(NewLHS, PN);
     LHSVal = NewLHS;
   }
@@ -458,6 +459,7 @@ Instruction *InstCombinerImpl::foldPHIArgBinOpIntoPHI(PHINode &PN) {
     NewRHS = PHINode::Create(RHSType, PN.getNumIncomingValues(),
                              FirstInst->getOperand(1)->getName() + ".pn");
     NewRHS->addIncoming(InRHS, PN.getIncomingBlock(0));
+    NewRHS->setDebugLoc(PN.getDebugLoc());
     InsertNewInstBefore(NewRHS, PN);
     RHSVal = NewRHS;
   }
@@ -728,6 +730,7 @@ Instruction *InstCombinerImpl::foldPHIArgLoadIntoPHI(PHINode &PN) {
   PHINode *NewPN = PHINode::Create(FirstLI->getOperand(0)->getType(),
                                    PN.getNumIncomingValues(),
                                    PN.getName()+".in");
+  NewPN->setDebugLoc(PN.getDebugLoc());
 
   Value *InVal = FirstLI->getOperand(0);
   NewPN->addIncoming(InVal, PN.getIncomingBlock(0));
@@ -851,6 +854,7 @@ Instruction *InstCombinerImpl::foldPHIArgZextsIntoPHI(PHINode &Phi) {
                                     Phi.getName() + ".shrunk");
   for (unsigned I = 0; I != NumIncomingValues; ++I)
     NewPhi->addIncoming(NewIncoming[I], Phi.getIncomingBlock(I));
+  NewPhi->setDebugLoc(Phi.getDebugLoc());
 
   InsertNewInstBefore(NewPhi, Phi);
   return CastInst::CreateZExtOrBitCast(NewPhi, Phi.getType());
@@ -921,6 +925,7 @@ Instruction *InstCombinerImpl::foldPHIArgOpIntoPHI(PHINode &PN) {
   PHINode *NewPN = PHINode::Create(FirstInst->getOperand(0)->getType(),
                                    PN.getNumIncomingValues(),
                                    PN.getName()+".in");
+  NewPN->setDebugLoc(PN.getDebugLoc());
 
   Value *InVal = FirstInst->getOperand(0);
   NewPN->addIncoming(InVal, PN.getIncomingBlock(0));

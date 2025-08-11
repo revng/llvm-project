@@ -27,6 +27,7 @@
 #include "llvm/IR/Value.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/RevngOptions.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/SSAUpdaterImpl.h"
 #include <cassert>
@@ -269,6 +270,13 @@ public:
                                SSAUpdater *Updater) {
     PHINode *PHI = PHINode::Create(Updater->ProtoType, NumPreds,
                                    Updater->ProtoName, &BB->front());
+
+    if (revng::RevngDebugInformationPreservationStyle) {
+      // Not the cleanest, but at the very least it ensures at least some kind
+      // of debug-information is present.
+      PHI->setDebugLoc(BB->getTerminator()->getDebugLoc());
+    }
+
     return PHI;
   }
 
