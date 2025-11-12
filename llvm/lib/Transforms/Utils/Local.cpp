@@ -3302,7 +3302,12 @@ bool llvm::recognizeBSwapOrBitReverseIdiom(
       BitProvenance = BitProvenance.drop_back();
     if (BitProvenance.empty())
       return false; // TODO - handle null value?
-    DemandedTy = Type::getIntNTy(I->getContext(), BitProvenance.size());
+
+    unsigned Size = BitProvenance.size();
+    if (!I->getModule()->getDataLayout().isLegalInteger(Size))
+      return false;
+
+    DemandedTy = Type::getIntNTy(I->getContext(), Size);
     if (auto *IVecTy = dyn_cast<VectorType>(ITy))
       DemandedTy = VectorType::get(DemandedTy, IVecTy);
   }
