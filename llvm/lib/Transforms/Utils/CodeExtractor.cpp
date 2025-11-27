@@ -231,8 +231,8 @@ buildExtractionBlockSet(ArrayRef<BasicBlock *> BBs, DominatorTree *DT,
       if (!Result.count(PBB)) {
         LLVM_DEBUG(dbgs() << "No blocks in this region may have entries from "
                              "outside the region except for the first block!\n"
-                          << "Problematic source BB: " << BB->getName() << "\n"
-                          << "Problematic destination BB: " << PBB->getName()
+                          << "Problematic source BB: " << PBB->getName() << "\n"
+                          << "Problematic destination BB: " << BB->getName()
                           << "\n");
         return {};
       }
