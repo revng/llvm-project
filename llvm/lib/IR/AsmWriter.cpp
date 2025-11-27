@@ -88,6 +88,14 @@
 
 using namespace llvm;
 
+static cl::opt<uint64_t>
+EmitHexConstantLiteralsFrom("emit-hex-constant-literals-from",
+                             cl::desc("Emit constant literals greater than or"
+                                      " equal to a certain unsigned value in"
+                                      " hexadecimal in LLVM IR."),
+                             cl::init(std::numeric_limits<uint64_t>::max()));
+
+
 // Make virtual table appear in this compilation unit.
 AssemblyAnnotationWriter::~AssemblyAnnotationWriter() = default;
 
@@ -1353,7 +1361,16 @@ static void WriteConstantInternal(raw_ostream &Out, const Constant *CV,
       Out << (CI->getZExtValue() ? "true" : "false");
       return;
     }
-    Out << CI->getValue();
+
+    if (EmitHexConstantLiteralsFrom != std::numeric_limits<uint64_t>::max()
+        && CI->getValue().uge(EmitHexConstantLiteralsFrom)) {
+      std::string Value = llvm::toString(CI->getValue(), 16, false, false);
+      llvm::transform(Value, Value.begin(), tolower);
+      Out << "u0x" << Value;
+    } else {
+      Out << CI->getValue();
+    }
+
     return;
   }
 
