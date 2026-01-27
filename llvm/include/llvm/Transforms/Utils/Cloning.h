@@ -57,6 +57,21 @@ std::unique_ptr<Module>
 CloneModule(const Module &M, ValueToValueMapTy &VMap,
             function_ref<bool(const GlobalValue *)> ShouldCloneDefinition);
 
+enum class CloneAction : uint8_t {
+  Omit,
+  MakeDeclaration,
+  Clone,
+};
+
+/// This version works similarly to the one above with `ShouldCloneDefinition`,
+/// however it allows specifying that a GlobalValue is to be completely skipped
+/// for cloning via `CloneAction::Omit`.
+/// NOTE: passing `Omit` is dangerous, if a GV is omitted and it's used by e.g.
+///       a function then it will lead to an assertion when cloning.
+std::unique_ptr<Module>
+CloneModule(const Module &M, ValueToValueMapTy &VMap,
+            function_ref<CloneAction(const GlobalValue *)> Action);
+
 /// This struct can be used to capture information about code
 /// being cloned, while it is being cloned.
 struct ClonedCodeInfo {
