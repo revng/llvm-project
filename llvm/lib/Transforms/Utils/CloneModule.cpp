@@ -49,6 +49,15 @@ std::unique_ptr<Module> llvm::CloneModule(const Module &M,
 std::unique_ptr<Module> llvm::CloneModule(
     const Module &M, ValueToValueMapTy &VMap,
     function_ref<bool(const GlobalValue *)> ShouldCloneDefinition) {
+  return CloneModule(M, VMap, [&ShouldCloneDefinition](const GlobalValue *GV) {
+    return ShouldCloneDefinition(GV) ? CloneAction::Clone
+                                     : CloneAction::MakeDeclaration;
+  });
+}
+
+std::unique_ptr<Module>
+llvm::CloneModule(const Module &M, ValueToValueMapTy &VMap,
+                  function_ref<CloneAction(const GlobalValue *)> Action) {
   // First off, we need to create the new module.
   std::unique_ptr<Module> New =
       std::make_unique<Module>(M.getModuleIdentifier(), M.getContext());
@@ -57,11 +66,16 @@ std::unique_ptr<Module> llvm::CloneModule(
   New->setTargetTriple(M.getTargetTriple());
   New->setModuleInlineAsm(M.getModuleInlineAsm());
 
+  DenseMap<const GlobalValue *, CloneAction> Actions;
   // Loop over all of the global variables, making corresponding globals in the
   // new module.  Here we add them to the VMap and to the new Module.  We
   // don't worry about attributes or initializers, they will come later.
   //
   for (const GlobalVariable &I : M.globals()) {
+    Actions[&I] = Action(&I);
+    if (Actions[&I] == CloneAction::Omit)
+      continue;
+
     GlobalVariable *NewGV = new GlobalVariable(
         *New, I.getValueType(), I.isConstant(), I.getLinkage(),
         (Constant *)nullptr, I.getName(), (GlobalVariable *)nullptr,
@@ -72,6 +86,10 @@ std::unique_ptr<Module> llvm::CloneModule(
 
   // Loop over the functions in the module, making external functions as before
   for (const Function &I : M) {
+    Actions[&I] = Action(&I);
+    if (Actions[&I] == CloneAction::Omit)
+      continue;
+
     Function *NF =
         Function::Create(cast<FunctionType>(I.getValueType()), I.getLinkage(),
                          I.getAddressSpace(), I.getName(), New.get());
@@ -81,7 +99,11 @@ std::unique_ptr<Module> llvm::CloneModule(
 
   // Loop over the aliases in the module
   for (const GlobalAlias &I : M.aliases()) {
-    if (!ShouldCloneDefinition(&I)) {
+    Actions[&I] = Action(&I);
+    if (Actions[&I] == CloneAction::Omit)
+      continue;
+
+    if (Actions[&I] == CloneAction::MakeDeclaration) {
       // An alias cannot act as an external reference, so we need to create
       // either a function or a global variable depending on the value type.
       // FIXME: Once pointee types are gone we can probably pick one or the
@@ -110,6 +132,10 @@ std::unique_ptr<Module> llvm::CloneModule(
   }
 
   for (const GlobalIFunc &I : M.ifuncs()) {
+    Actions[&I] = Action(&I);
+    if (Actions[&I] == CloneAction::Omit)
+      continue;
+
     // Defer setting the resolver function until after functions are cloned.
     auto *GI =
         GlobalIFunc::create(I.getValueType(), I.getAddressSpace(),
@@ -123,6 +149,9 @@ std::unique_ptr<Module> llvm::CloneModule(
   // over...  We also set the attributes on the global now.
   //
   for (const GlobalVariable &G : M.globals()) {
+    if (Actions[&G] == CloneAction::Omit)
+      continue;
+
     GlobalVariable *GV = cast<GlobalVariable>(VMap[&G]);
 
     SmallVector<std::pair<unsigned, MDNode *>, 1> MDs;
@@ -133,7 +162,7 @@ std::unique_ptr<Module> llvm::CloneModule(
     if (G.isDeclaration())
       continue;
 
-    if (!ShouldCloneDefinition(&G)) {
+    if (Actions[&G] == CloneAction::MakeDeclaration) {
       // Skip after setting the correct linkage for an external reference.
       GV->setLinkage(GlobalValue::ExternalLinkage);
       continue;
@@ -147,6 +176,9 @@ std::unique_ptr<Module> llvm::CloneModule(
   // Similarly, copy over function bodies now...
   //
   for (const Function &I : M) {
+    if (Actions[&I] == CloneAction::Omit)
+      continue;
+
     Function *F = cast<Function>(VMap[&I]);
 
     if (I.isDeclaration()) {
@@ -159,7 +191,7 @@ std::unique_ptr<Module> llvm::CloneModule(
       continue;
     }
 
-    if (!ShouldCloneDefinition(&I)) {
+    if (Actions[&I] == CloneAction::MakeDeclaration) {
       // Skip after setting the correct linkage for an external reference.
       F->setLinkage(GlobalValue::ExternalLinkage);
       // Personality function is not valid on a declaration.
@@ -186,14 +218,18 @@ std::unique_ptr<Module> llvm::CloneModule(
   // And aliases
   for (const GlobalAlias &I : M.aliases()) {
     // We already dealt with undefined aliases above.
-    if (!ShouldCloneDefinition(&I))
+    if (Actions[&I] != CloneAction::Clone)
       continue;
+
     GlobalAlias *GA = cast<GlobalAlias>(VMap[&I]);
     if (const Constant *C = I.getAliasee())
       GA->setAliasee(MapValue(C, VMap));
   }
 
   for (const GlobalIFunc &I : M.ifuncs()) {
+    if (Actions[&I] == CloneAction::Omit)
+      continue;
+
     GlobalIFunc *GI = cast<GlobalIFunc>(VMap[&I]);
     if (const Constant *Resolver = I.getResolver())
       GI->setResolver(MapValue(Resolver, VMap));
