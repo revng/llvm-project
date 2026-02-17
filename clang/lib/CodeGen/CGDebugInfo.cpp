@@ -4243,6 +4243,10 @@ void CGDebugInfo::EmitFunctionDecl(GlobalDecl GD, SourceLocation Loc,
 
   if (IsDeclForCallSite)
     Fn->setSubprogram(SP);
+  else
+    // [HACK] Retain declaration-only subprograms so they survive into the
+    // PDB / DWARF output even when the function is never defined or called.
+    DBuilder.retainType(SP);
 
   DBuilder.finalizeSubprogram(SP);
 }

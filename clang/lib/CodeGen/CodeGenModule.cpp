@@ -66,7 +66,10 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ConvertUTF.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/Process.h"
 #include "llvm/Support/TimeProfiler.h"
+#include "llvm/ADT/StringSet.h"
 #include "llvm/Support/X86TargetParser.h"
 #include "llvm/Support/xxhash.h"
 #include <optional>
@@ -6276,6 +6279,46 @@ void CodeGenModule::EmitDeclContext(const DeclContext *DC) {
   }
 }
 
+// [HACK] Lazily load the PDB_TRAVERSE_FILE whitelist.
+struct TraverseWhitelist {
+  bool Loaded = false;
+  bool HasFilter = false;
+  llvm::StringSet<> Files;
+
+  void ensureLoaded() {
+    if (Loaded)
+      return;
+    Loaded = true;
+    if (auto V = llvm::sys::Process::GetEnv("PDB_TRAVERSE_FILE"))
+      if (auto B = llvm::MemoryBuffer::getFile(*V)) {
+        llvm::SmallVector<llvm::StringRef, 64> Lines;
+        (*B)->getBuffer().split(Lines, '\n', -1, false);
+        for (auto L : Lines)
+          if (!(L = L.trim()).empty())
+            Files.insert(L.lower());
+        HasFilter = true;
+      }
+  }
+
+  bool hasFilter() { ensureLoaded(); return HasFilter; }
+
+  bool contains(const Decl *D, ASTContext &Ctx) {
+    ensureLoaded();
+    if (!HasFilter)
+      return true;
+    auto Loc = Ctx.getSourceManager().getExpansionLoc(D->getLocation());
+    auto F = Ctx.getSourceManager().getFilename(Loc);
+    return !F.empty() && Files.count(F.lower());
+  }
+};
+static TraverseWhitelist TheTraverseWhitelist;
+
+// [HACK] Check whether a Decl comes from a file listed in the
+// PDB_TRAVERSE_FILE whitelist.  If no whitelist is set, allow everything.
+static bool isDeclInTraverseWhitelist(const Decl *D, ASTContext &Ctx) {
+  return TheTraverseWhitelist.contains(D, Ctx);
+}
+
 /// EmitTopLevelDecl - Emit code for a single top level declaration.
 void CodeGenModule::EmitTopLevelDecl(Decl *D) {
   // Ignore dependent declarations.
@@ -6295,6 +6338,23 @@ void CodeGenModule::EmitTopLevelDecl(Decl *D) {
     // Always provide some coverage mapping
     // even for the functions that aren't emitted.
     AddDeferredUnusedCoverageMapping(D);
+    // [HACK] Emit debug info for extern function declarations from
+    // whitelisted headers so their prototypes appear in the PDB.
+    // Only active when PDB_TRAVERSE_FILE is set: EmitFunctionDecl with
+    // Fn=nullptr can crash for certain C++ declarations whose debug
+    // context is not yet materialized.
+    if (TheTraverseWhitelist.hasFilter()) {
+      if (CGDebugInfo *DI = getModuleDebugInfo()) {
+        auto *FD = cast<FunctionDecl>(D);
+        if (!isa<CXXMethodDecl>(FD) &&
+            !FD->doesThisDeclarationHaveABody() &&
+            !FD->isDependentContext() && !FD->isImplicit() &&
+            isDeclInTraverseWhitelist(D, getContext()))
+          if (auto *FPT = FD->getType()->getAs<FunctionProtoType>())
+            DI->EmitFunctionDecl(GlobalDecl(FD), FD->getLocation(),
+                                 QualType(FPT, 0));
+      }
+    }
     break;
 
   case Decl::CXXDeductionGuide:
@@ -6331,7 +6391,7 @@ void CodeGenModule::EmitTopLevelDecl(Decl *D) {
   case Decl::CXXRecord: {
     CXXRecordDecl *CRD = cast<CXXRecordDecl>(D);
     if (CGDebugInfo *DI = getModuleDebugInfo()) {
-      if (CRD->hasDefinition())
+      if (CRD->hasDefinition() && isDeclInTraverseWhitelist(D, getContext()))
         DI->EmitAndRetainType(getContext().getRecordType(cast<RecordDecl>(D)));
       if (auto *ES = D->getASTContext().getExternalSource())
         if (ES->hasExternalDefinitions(D) == ExternalASTSource::EK_Never)
@@ -6553,19 +6613,22 @@ void CodeGenModule::EmitTopLevelDecl(Decl *D) {
   case Decl::Typedef:
   case Decl::TypeAlias: // using foo = bar; [C++11]
     if (CGDebugInfo *DI = getModuleDebugInfo())
-      DI->EmitAndRetainType(
-          getContext().getTypedefType(cast<TypedefNameDecl>(D)));
+      if (isDeclInTraverseWhitelist(D, getContext()))
+        DI->EmitAndRetainType(
+            getContext().getTypedefType(cast<TypedefNameDecl>(D)));
     break;
 
   case Decl::Record:
     if (CGDebugInfo *DI = getModuleDebugInfo())
-      if (cast<RecordDecl>(D)->getDefinition())
+      if (cast<RecordDecl>(D)->getDefinition() &&
+          isDeclInTraverseWhitelist(D, getContext()))
         DI->EmitAndRetainType(getContext().getRecordType(cast<RecordDecl>(D)));
     break;
 
   case Decl::Enum:
     if (CGDebugInfo *DI = getModuleDebugInfo())
-      if (cast<EnumDecl>(D)->getDefinition())
+      if (cast<EnumDecl>(D)->getDefinition() &&
+          isDeclInTraverseWhitelist(D, getContext()))
         DI->EmitAndRetainType(getContext().getEnumType(cast<EnumDecl>(D)));
     break;
 

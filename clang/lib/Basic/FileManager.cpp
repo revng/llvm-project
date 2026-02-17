@@ -577,6 +577,40 @@ FileManager::getBufferForFileImpl(StringRef Filename, int64_t FileSize,
                               isVolatile);
 }
 
+// [HACK] Walk a path component-by-component, resolving each level with a
+// case-insensitive directory scan.  Returns the real-cased path on success.
+static std::optional<std::string>
+findPathCaseInsensitive(StringRef CaseInsensitivePath) {
+  using llvm::sys::fs::directory_iterator;
+
+  SmallVector<StringRef> Components;
+  CaseInsensitivePath.split(Components, "/", -1, /*KeepEmpty=*/false);
+  if (Components.empty())
+    return std::nullopt;
+
+  // Start from "/" for absolute paths, "" (cwd) for relative ones.
+  SmallString<256> Resolved;
+  if (CaseInsensitivePath.starts_with("/"))
+    Resolved = "/";
+
+  for (StringRef Component : Components) {
+    std::error_code EC;
+    bool Found = false;
+    for (directory_iterator It(Resolved, EC), End; It != End && !EC;
+         It.increment(EC)) {
+      StringRef EntryName = llvm::sys::path::filename(It->path());
+      if (EntryName.equals_insensitive(Component)) {
+        llvm::sys::path::append(Resolved, EntryName);
+        Found = true;
+        break;
+      }
+    }
+    if (EC || !Found)
+      return std::nullopt;
+  }
+  return Resolved.str().str();
+}
+
 /// getStatValue - Get the 'stat' information for the specified path,
 /// using the cache to accelerate it if possible.  This returns true
 /// if the path points to a virtual file or does not exist, or returns
@@ -587,15 +621,30 @@ FileManager::getStatValue(StringRef Path, llvm::vfs::Status &Status,
                           bool isFile, std::unique_ptr<llvm::vfs::File> *F) {
   // FIXME: FileSystemOpts shouldn't be passed in here, all paths should be
   // absolute!
-  if (FileSystemOpts.WorkingDir.empty())
-    return FileSystemStatCache::get(Path, Status, isFile, F,
-                                    StatCache.get(), *FS);
+  if (FileSystemOpts.WorkingDir.empty()) {
+    auto EC = FileSystemStatCache::get(Path, Status, isFile, F,
+                                       StatCache.get(), *FS);
+    if (!EC)
+      return EC;
+    // [HACK] Case-insensitive fallback for Windows SDK headers on Linux.
+    if (auto Resolved = findPathCaseInsensitive(Path))
+      return FileSystemStatCache::get(*Resolved, Status, isFile, F,
+                                      StatCache.get(), *FS);
+    return EC;
+  }
 
   SmallString<128> FilePath(Path);
   FixupRelativePath(FilePath);
 
-  return FileSystemStatCache::get(FilePath.c_str(), Status, isFile, F,
-                                  StatCache.get(), *FS);
+  auto EC = FileSystemStatCache::get(FilePath.c_str(), Status, isFile, F,
+                                     StatCache.get(), *FS);
+  if (!EC)
+    return EC;
+  // [HACK] Case-insensitive fallback.
+  if (auto Resolved = findPathCaseInsensitive(FilePath))
+    return FileSystemStatCache::get(*Resolved, Status, isFile, F,
+                                    StatCache.get(), *FS);
+  return EC;
 }
 
 std::error_code

@@ -3298,6 +3298,11 @@ void CodeViewDebug::emitDebugInfoForRetainedTypes() {
       if (DIType *RT = dyn_cast<DIType>(Ty)) {
         getTypeIndex(RT);
         // FIXME: Add to global/local DTU list.
+      } else if (auto *SP = dyn_cast<DISubprogram>(Ty)) {
+        // [HACK] Emit LF_FUNC_ID for declaration-only subprograms so that
+        // function prototypes from headers appear in the PDB.
+        if (!SP->isDefinition())
+          getFuncIdForSubprogram(SP);
       }
     }
   }
