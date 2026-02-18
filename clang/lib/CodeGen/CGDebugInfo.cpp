@@ -4243,6 +4243,8 @@ void CGDebugInfo::EmitFunctionDecl(GlobalDecl GD, SourceLocation Loc,
 
   if (IsDeclForCallSite)
     Fn->setSubprogram(SP);
+  else if (CGM.getCodeGenOpts().hasMaybeUnusedDebugInfo())
+    DBuilder.retainType(SP);
 
   DBuilder.finalizeSubprogram(SP);
 }
