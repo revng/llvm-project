@@ -5743,6 +5743,7 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   CmdArgs.push_back(D.ResourceDir.c_str());
 
   Args.AddLastArg(CmdArgs, options::OPT_working_directory);
+  Args.AddLastArg(CmdArgs, options::OPT_fcase_insensitive_paths);
 
   RenderARCMigrateToolOptions(D, Args, CmdArgs);
 

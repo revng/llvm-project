@@ -577,6 +577,43 @@ FileManager::getBufferForFileImpl(StringRef Filename, int64_t FileSize,
                               isVolatile);
 }
 
+/// Walk a path component-by-component, resolving each level with a
+/// case-insensitive directory scan.  Returns the real-cased path on success.
+static std::optional<std::string>
+findPathCaseInsensitive(StringRef CaseInsensitivePath) {
+  using llvm::sys::fs::directory_iterator;
+  namespace path = llvm::sys::path;
+
+  SmallString<256> Resolved = path::root_path(CaseInsensitivePath);
+  StringRef Relative = path::relative_path(CaseInsensitivePath);
+  if (Relative.empty())
+    return std::nullopt;
+
+  for (StringRef Component :
+       llvm::make_range(path::begin(Relative), path::end(Relative))) {
+    std::error_code EC;
+    std::string Match;
+    unsigned Hits = 0;
+    for (directory_iterator It(Resolved, EC), End; It != End && !EC;
+         It.increment(EC)) {
+      StringRef EntryName = path::filename(It->path());
+      if (EntryName.equals_insensitive(Component)) {
+        if (Hits == 0)
+          Match = EntryName.str();
+        ++Hits;
+      }
+    }
+    if (EC || Hits == 0)
+      return std::nullopt;
+    if (Hits > 1)
+      llvm::errs() << "warning: ambiguous case-insensitive match for '"
+                   << Component << "' in '" << Resolved
+                   << "'; picking '" << Match << "'\n";
+    path::append(Resolved, Match);
+  }
+  return Resolved.str().str();
+}
+
 /// getStatValue - Get the 'stat' information for the specified path,
 /// using the cache to accelerate it if possible.  This returns true
 /// if the path points to a virtual file or does not exist, or returns
@@ -587,15 +624,21 @@ FileManager::getStatValue(StringRef Path, llvm::vfs::Status &Status,
                           bool isFile, std::unique_ptr<llvm::vfs::File> *F) {
   // FIXME: FileSystemOpts shouldn't be passed in here, all paths should be
   // absolute!
-  if (FileSystemOpts.WorkingDir.empty())
-    return FileSystemStatCache::get(Path, Status, isFile, F,
-                                    StatCache.get(), *FS);
-
   SmallString<128> FilePath(Path);
-  FixupRelativePath(FilePath);
+  if (!FileSystemOpts.WorkingDir.empty())
+    FixupRelativePath(FilePath);
 
-  return FileSystemStatCache::get(FilePath.c_str(), Status, isFile, F,
-                                  StatCache.get(), *FS);
+  auto stat = [&](StringRef P) {
+    return FileSystemStatCache::get(P, Status, isFile, F, StatCache.get(), *FS);
+  };
+
+  auto EC = stat(FilePath);
+  if (!EC)
+    return EC;
+  if (FileSystemOpts.CaseInsensitivePaths)
+    if (auto Resolved = findPathCaseInsensitive(FilePath))
+      return stat(*Resolved);
+  return EC;
 }
 
 std::error_code

@@ -4376,6 +4376,10 @@ def working_directory : Separate<["-"], "working-directory">, Flags<[CC1Option]>
   MarshallingInfoString<FileSystemOpts<"WorkingDir">>;
 def working_directory_EQ : Joined<["-"], "working-directory=">, Flags<[CC1Option]>,
   Alias<working_directory>;
+def fcase_insensitive_paths : Flag<["-"], "fcase-insensitive-paths">,
+  Flags<[CC1Option]>,
+  HelpText<"Retry failed file lookups with a case-insensitive directory scan">,
+  MarshallingInfoFlag<FileSystemOpts<"CaseInsensitivePaths">>;
 
 // Double dash options, which are usually an alias for one of the previous
 // options.
