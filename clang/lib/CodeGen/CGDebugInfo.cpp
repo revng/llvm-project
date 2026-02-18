@@ -4189,6 +4189,7 @@ void CGDebugInfo::EmitFunctionDecl(GlobalDecl GD, SourceLocation Loc,
   llvm::DINode::DIFlags Flags = llvm::DINode::FlagZero;
   llvm::DIFile *Unit = getOrCreateFile(Loc);
   bool IsDeclForCallSite = Fn ? true : false;
+
   llvm::DIScope *FDContext =
       IsDeclForCallSite ? Unit : getDeclContextDescriptor(D);
   llvm::DINodeArray TParamsArray;
@@ -4219,10 +4220,17 @@ void CGDebugInfo::EmitFunctionDecl(GlobalDecl GD, SourceLocation Loc,
 
   llvm::DINodeArray Annotations = CollectBTFDeclTagAnnotations(D);
   llvm::DISubroutineType *STy = getOrCreateFunctionType(D, FnType, Unit);
+  // Only link to a prior declaration when creating a call-site entry.
+  // For standalone declarations the SP *is* the declaration; passing
+  // getFunctionDeclaration() here would let DISubprogram::get() unique
+  // the new node to the existing member SP, producing a self-referencing
+  // declaration link that causes infinite recursion in the DWARF emitter.
+  llvm::DISubprogram *Decl =
+      IsDeclForCallSite ? getFunctionDeclaration(D) : nullptr;
   llvm::DISubprogram *SP =
       DBuilder.createFunction(FDContext, Name, LinkageName, Unit, LineNo, STy,
                               ScopeLine, Flags, SPFlags, TParamsArray.get(),
-                              getFunctionDeclaration(D), nullptr, Annotations);
+                              Decl, nullptr, Annotations);
 
   // Preserve btf_decl_tag attributes for parameters of extern functions
   // for BPF target. The parameters created in this loop are attached as
@@ -4243,6 +4251,8 @@ void CGDebugInfo::EmitFunctionDecl(GlobalDecl GD, SourceLocation Loc,
 
   if (IsDeclForCallSite)
     Fn->setSubprogram(SP);
+  else if (CGM.getCodeGenOpts().hasMaybeUnusedDebugInfo())
+    DBuilder.retainType(SP);
 
   DBuilder.finalizeSubprogram(SP);
 }

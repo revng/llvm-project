@@ -6276,6 +6276,24 @@ void CodeGenModule::EmitDeclContext(const DeclContext *DC) {
   }
 }
 
+/// Emit a DISubprogram for a function declaration so its prototype ends
+/// up in the debug output (LF_FUNC_ID in CodeView) even when the TU
+/// has no definition.
+static void emitFunctionDecl(CodeGenModule &CGM, const FunctionDecl *FD) {
+  // Only emit for declaration-only functions; definitions already get
+  // a DISubprogram through the normal codegen path.
+  if (FD->doesThisDeclarationHaveABody())
+    return;
+  // Skip declarations whose type can't be represented in debug info
+  // (e.g. undeduced auto return types, dependent template types).
+  const auto *FPT = FD->getType()->getAs<FunctionProtoType>();
+  if (!FPT || FPT->isDependentType() || FPT->isUndeducedType())
+    return;
+  CGDebugInfo *DI = CGM.getModuleDebugInfo();
+  if (DI)
+    DI->EmitFunctionDecl(GlobalDecl(FD), FD->getLocation(), QualType(FPT, 0));
+}
+
 /// EmitTopLevelDecl - Emit code for a single top level declaration.
 void CodeGenModule::EmitTopLevelDecl(Decl *D) {
   // Ignore dependent declarations.
@@ -6295,6 +6313,7 @@ void CodeGenModule::EmitTopLevelDecl(Decl *D) {
     // Always provide some coverage mapping
     // even for the functions that aren't emitted.
     AddDeferredUnusedCoverageMapping(D);
+    emitFunctionDecl(*this, cast<FunctionDecl>(D));
     break;
 
   case Decl::CXXDeductionGuide:
