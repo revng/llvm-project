@@ -24,6 +24,11 @@ public:
   /// If set, paths are resolved as if the working directory was
   /// set to the value of WorkingDir.
   std::string WorkingDir;
+
+  /// If set, file lookups that fail are retried with a case-insensitive
+  /// directory scan.  Useful for compiling against SDKs whose header paths
+  /// use a different case than the #include directives.
+  bool CaseInsensitivePaths = false;
 };
 
 } // end namespace clang

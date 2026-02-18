@@ -6551,6 +6551,9 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   if (IsMSVCCompat)
     CmdArgs.push_back("-fms-compatibility");
 
+  if (Args.hasArg(options::OPT_fcase_insensitive_paths))
+    CmdArgs.push_back("-fcase-insensitive-paths");
+
   if (Triple.isWindowsMSVCEnvironment() && !D.IsCLMode() &&
       Args.hasArg(options::OPT_fms_runtime_lib_EQ))
     ProcessVSRuntimeLibrary(Args, CmdArgs);

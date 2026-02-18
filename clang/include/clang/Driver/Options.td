@@ -1402,6 +1402,10 @@ defm borland_extensions : BoolFOption<"borland-extensions",
   LangOpts<"Borland">, DefaultFalse,
   PosFlag<SetTrue, [CC1Option], "Accept non-standard constructs supported by the Borland compiler">,
   NegFlag<SetFalse>>;
+def fcase_insensitive_paths : Flag<["-"], "fcase-insensitive-paths">,
+  Group<f_Group>, Flags<[CC1Option]>,
+  HelpText<"Retry failed file lookups with a case-insensitive directory scan">,
+  MarshallingInfoFlag<FileSystemOpts<"CaseInsensitivePaths">>;
 def fbuiltin : Flag<["-"], "fbuiltin">, Group<f_Group>, Flags<[CoreOption]>;
 def fbuiltin_module_map : Flag <["-"], "fbuiltin-module-map">, Group<f_Group>,
   Flags<[NoXarchOption]>, HelpText<"Load the clang builtins module map file.">;
