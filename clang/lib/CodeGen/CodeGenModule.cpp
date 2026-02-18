@@ -66,8 +66,11 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ConvertUTF.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/Process.h"
 #include "llvm/Support/TimeProfiler.h"
 #include "llvm/Support/X86TargetParser.h"
+#include "llvm/ADT/StringSet.h"
 #include "llvm/Support/xxhash.h"
 #include <optional>
 
@@ -6276,6 +6279,47 @@ void CodeGenModule::EmitDeclContext(const DeclContext *DC) {
   }
 }
 
+/// Lazily loads CLANG_DEBUG_INFO_ALLOWED_FILES: a colon-separated list of file
+/// paths.  When the filter is active, only declarations from listed files get
+/// their debug info types/functions retained.
+struct AllowedFilesFilter {
+  bool Loaded = false;
+  bool HasFilter = false;
+  llvm::StringSet<> Files;
+
+  void ensureLoaded() {
+    if (Loaded)
+      return;
+    Loaded = true;
+    if (auto Value = llvm::sys::Process::GetEnv("CLANG_DEBUG_INFO_ALLOWED_FILES")) {
+      llvm::SmallVector<llvm::StringRef, 64> Paths;
+      llvm::StringRef(*Value).split(Paths, ':', -1, false);
+      for (auto Path : Paths)
+        if (!(Path = Path.trim()).empty())
+          Files.insert(Path.lower());
+      HasFilter = true;
+    }
+  }
+
+  bool hasFilter() { ensureLoaded(); return HasFilter; }
+
+  bool contains(const Decl *D, ASTContext &Context) {
+    ensureLoaded();
+    if (!HasFilter)
+      return true;
+    auto Loc = Context.getSourceManager().getExpansionLoc(D->getLocation());
+    auto Filename = Context.getSourceManager().getFilename(Loc);
+    return !Filename.empty() && Files.count(Filename.lower());
+  }
+};
+static AllowedFilesFilter TheAllowedFilesFilter;
+
+/// Returns true if D comes from a file listed in CLANG_DEBUG_INFO_ALLOWED_FILES.
+/// If the filter is not set, all declarations pass.
+static bool isDeclInAllowedFiles(const Decl *D, ASTContext &Context) {
+  return TheAllowedFilesFilter.contains(D, Context);
+}
+
 /// EmitTopLevelDecl - Emit code for a single top level declaration.
 void CodeGenModule::EmitTopLevelDecl(Decl *D) {
   // Ignore dependent declarations.
@@ -6295,6 +6339,23 @@ void CodeGenModule::EmitTopLevelDecl(Decl *D) {
     // Always provide some coverage mapping
     // even for the functions that aren't emitted.
     AddDeferredUnusedCoverageMapping(D);
+    // Emit debug info for extern function declarations from allowed files
+    // so their prototypes appear in the debug output.  Only active when
+    // CLANG_DEBUG_INFO_ALLOWED_FILES is set: EmitFunctionDecl with
+    // Fn=nullptr can crash for certain C++ declarations whose debug
+    // context is not yet materialized.
+    if (TheAllowedFilesFilter.hasFilter()) {
+      if (CGDebugInfo *DI = getModuleDebugInfo()) {
+        auto *FD = cast<FunctionDecl>(D);
+        if (!isa<CXXMethodDecl>(FD) &&
+            !FD->doesThisDeclarationHaveABody() &&
+            !FD->isDependentContext() && !FD->isImplicit() &&
+            isDeclInAllowedFiles(D, getContext()))
+          if (auto *FPT = FD->getType()->getAs<FunctionProtoType>())
+            DI->EmitFunctionDecl(GlobalDecl(FD), FD->getLocation(),
+                                 QualType(FPT, 0));
+      }
+    }
     break;
 
   case Decl::CXXDeductionGuide:
@@ -6331,7 +6392,7 @@ void CodeGenModule::EmitTopLevelDecl(Decl *D) {
   case Decl::CXXRecord: {
     CXXRecordDecl *CRD = cast<CXXRecordDecl>(D);
     if (CGDebugInfo *DI = getModuleDebugInfo()) {
-      if (CRD->hasDefinition())
+      if (CRD->hasDefinition() && isDeclInAllowedFiles(D, getContext()))
         DI->EmitAndRetainType(getContext().getRecordType(cast<RecordDecl>(D)));
       if (auto *ES = D->getASTContext().getExternalSource())
         if (ES->hasExternalDefinitions(D) == ExternalASTSource::EK_Never)
@@ -6553,19 +6614,22 @@ void CodeGenModule::EmitTopLevelDecl(Decl *D) {
   case Decl::Typedef:
   case Decl::TypeAlias: // using foo = bar; [C++11]
     if (CGDebugInfo *DI = getModuleDebugInfo())
-      DI->EmitAndRetainType(
-          getContext().getTypedefType(cast<TypedefNameDecl>(D)));
+      if (isDeclInAllowedFiles(D, getContext()))
+        DI->EmitAndRetainType(
+            getContext().getTypedefType(cast<TypedefNameDecl>(D)));
     break;
 
   case Decl::Record:
     if (CGDebugInfo *DI = getModuleDebugInfo())
-      if (cast<RecordDecl>(D)->getDefinition())
+      if (cast<RecordDecl>(D)->getDefinition() &&
+          isDeclInAllowedFiles(D, getContext()))
         DI->EmitAndRetainType(getContext().getRecordType(cast<RecordDecl>(D)));
     break;
 
   case Decl::Enum:
     if (CGDebugInfo *DI = getModuleDebugInfo())
-      if (cast<EnumDecl>(D)->getDefinition())
+      if (cast<EnumDecl>(D)->getDefinition() &&
+          isDeclInAllowedFiles(D, getContext()))
         DI->EmitAndRetainType(getContext().getEnumType(cast<EnumDecl>(D)));
     break;
 
