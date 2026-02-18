@@ -6276,6 +6276,22 @@ void CodeGenModule::EmitDeclContext(const DeclContext *DC) {
   }
 }
 
+/// Returns true if D comes from a file selected for rich debug info.
+/// If -fdebug-info-allowed-file is not set, all declarations pass.
+static bool isDeclInAllowedFiles(const Decl *D, CodeGenModule &CGM) {
+  const auto &Allowed = CGM.getCodeGenOpts().DebugInfoAllowedFiles;
+  if (Allowed.empty())
+    return true;
+  auto &SM = CGM.getContext().getSourceManager();
+  auto Filename = SM.getFilename(SM.getExpansionLoc(D->getLocation()));
+  if (Filename.empty())
+    return false;
+  for (const auto &F : Allowed)
+    if (Filename == F)
+      return true;
+  return false;
+}
+
 /// Emit a DISubprogram for a function declaration so its prototype ends
 /// up in the debug output (LF_FUNC_ID in CodeView) even when the TU
 /// has no definition.
@@ -6288,6 +6304,8 @@ static void emitFunctionDecl(CodeGenModule &CGM, const FunctionDecl *FD) {
   // (e.g. undeduced auto return types, dependent template types).
   const auto *FPT = FD->getType()->getAs<FunctionProtoType>();
   if (!FPT || FPT->isDependentType() || FPT->isUndeducedType())
+    return;
+  if (!isDeclInAllowedFiles(FD, CGM))
     return;
   CGDebugInfo *DI = CGM.getModuleDebugInfo();
   if (DI)
@@ -6350,7 +6368,7 @@ void CodeGenModule::EmitTopLevelDecl(Decl *D) {
   case Decl::CXXRecord: {
     CXXRecordDecl *CRD = cast<CXXRecordDecl>(D);
     if (CGDebugInfo *DI = getModuleDebugInfo()) {
-      if (CRD->hasDefinition())
+      if (CRD->hasDefinition() && isDeclInAllowedFiles(D, *this))
         DI->EmitAndRetainType(getContext().getRecordType(cast<RecordDecl>(D)));
       if (auto *ES = D->getASTContext().getExternalSource())
         if (ES->hasExternalDefinitions(D) == ExternalASTSource::EK_Never)
@@ -6572,19 +6590,22 @@ void CodeGenModule::EmitTopLevelDecl(Decl *D) {
   case Decl::Typedef:
   case Decl::TypeAlias: // using foo = bar; [C++11]
     if (CGDebugInfo *DI = getModuleDebugInfo())
-      DI->EmitAndRetainType(
-          getContext().getTypedefType(cast<TypedefNameDecl>(D)));
+      if (isDeclInAllowedFiles(D, *this))
+        DI->EmitAndRetainType(
+            getContext().getTypedefType(cast<TypedefNameDecl>(D)));
     break;
 
   case Decl::Record:
     if (CGDebugInfo *DI = getModuleDebugInfo())
-      if (cast<RecordDecl>(D)->getDefinition())
+      if (cast<RecordDecl>(D)->getDefinition() &&
+          isDeclInAllowedFiles(D, *this))
         DI->EmitAndRetainType(getContext().getRecordType(cast<RecordDecl>(D)));
     break;
 
   case Decl::Enum:
     if (CGDebugInfo *DI = getModuleDebugInfo())
-      if (cast<EnumDecl>(D)->getDefinition())
+      if (cast<EnumDecl>(D)->getDefinition() &&
+          isDeclInAllowedFiles(D, *this))
         DI->EmitAndRetainType(getContext().getEnumType(cast<EnumDecl>(D)));
     break;
 

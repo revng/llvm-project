@@ -398,6 +398,10 @@ public:
   /// by sanitizer coverage pass.
   std::vector<std::string> SanitizeCoverageAllowlistFiles;
 
+  /// Files whose declarations get rich debug info (types retained and
+  /// declaration-only subprograms emitted).
+  std::vector<std::string> DebugInfoAllowedFiles;
+
   /// The guard style used for stack protector to get a initial value, this
   /// value usually be gotten from TLS or get from __stack_chk_guard, or some
   /// other styles we may implement in the future.
