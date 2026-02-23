@@ -604,7 +604,7 @@ public:
   /// struct, its size, and the offsets of its fields.
   ///
   /// Note that this information is lazily cached.
-  const StructLayout *getStructLayout(StructType *Ty) const;
+  const StructLayout *getStructLayout(const StructType *Ty) const;
 
   /// Returns the preferred alignment of the specified global.
   ///
@@ -664,7 +664,7 @@ public:
 private:
   friend class DataLayout; // Only DataLayout can create this class
 
-  StructLayout(StructType *ST, const DataLayout &DL);
+  StructLayout(const StructType *ST, const DataLayout &DL);
 
   size_t numTrailingObjects(OverloadToken<uint64_t>) const {
     return NumElements;

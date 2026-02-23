@@ -45,7 +45,7 @@ using namespace llvm;
 // Support for StructLayout
 //===----------------------------------------------------------------------===//
 
-StructLayout::StructLayout(StructType *ST, const DataLayout &DL) {
+StructLayout::StructLayout(const StructType *ST, const DataLayout &DL) {
   assert(!ST->isOpaque() && "Cannot get layout of opaque structs");
   StructSize = 0;
   IsPadded = false;
@@ -646,7 +646,7 @@ Align DataLayout::getIntegerAlignment(uint32_t BitWidth,
 namespace {
 
 class StructLayoutMap {
-  using LayoutInfoTy = DenseMap<StructType*, StructLayout*>;
+  using LayoutInfoTy = DenseMap<const StructType*, StructLayout*>;
   LayoutInfoTy LayoutInfo;
 
 public:
@@ -659,7 +659,7 @@ public:
     }
   }
 
-  StructLayout *&operator[](StructType *STy) {
+  StructLayout *&operator[](const StructType *STy) {
     return LayoutInfo[STy];
   }
 };
@@ -678,7 +678,7 @@ DataLayout::~DataLayout() {
   clear();
 }
 
-const StructLayout *DataLayout::getStructLayout(StructType *Ty) const {
+const StructLayout *DataLayout::getStructLayout(const StructType *Ty) const {
   if (!LayoutMap)
     LayoutMap = new StructLayoutMap();
 
