@@ -5,10 +5,21 @@
 ; DW_ATE_[un]signed encoding for all integer types if they don't have distinct
 ; integer types for characters types. This was PR30552.
 
+; CHECK:      Alias (0x1000) {
+; CHECK-NEXT:   TypeLeafKind: LF_ALIAS (0x150A)
+; CHECK-NEXT:   UnderlyingType: signed char (0x10)
+; CHECK-NEXT:   Name: int8_t
+; CHECK-NEXT: }
+; CHECK:      Alias (0x1001) {
+; CHECK-NEXT:   TypeLeafKind: LF_ALIAS (0x150A)
+; CHECK-NEXT:   UnderlyingType: unsigned char (0x20)
+; CHECK-NEXT:   Name: uint8_t
+; CHECK-NEXT: }
+
 ; CHECK-LABEL: GlobalData {
 ; CHECK-NEXT:    Kind: S_GDATA32 (0x110D)
 ; CHECK-NEXT:    DataOffset:
-; CHECK-NEXT:    Type: signed char (0x10)
+; CHECK-NEXT:    Type: int8_t (0x1000)
 ; CHECK-NEXT:    DisplayName: x
 ; CHECK-NEXT:    LinkageName: x
 ; CHECK-NEXT:  }
@@ -16,7 +27,7 @@
 ; CHECK-LABEL: GlobalData {
 ; CHECK-NEXT:    Kind: S_GDATA32 (0x110D)
 ; CHECK-NEXT:    DataOffset:
-; CHECK-NEXT:    Type: unsigned char (0x20)
+; CHECK-NEXT:    Type: uint8_t (0x1001)
 ; CHECK-NEXT:    DisplayName: y
 ; CHECK-NEXT:    LinkageName: y
 ; CHECK-NEXT:  }

@@ -72,6 +72,12 @@ target triple = "x86_64-pc-windows-msvc19.0.24215"
 ; CHECK-NEXT:   LinkageName: .?AW4InnerEnum@HasNested@@
 ; CHECK-NEXT: }
 
+; CHECK:      Alias ([[INNERALIAS:0x.*]]) {
+; CHECK-NEXT:   TypeLeafKind: LF_ALIAS (0x150A)
+; CHECK-NEXT:   UnderlyingType: int (0x74)
+; CHECK-NEXT:   Name: InnerTypedef
+; CHECK-NEXT: }
+
 ; CHECK:      FieldList ([[UNNAMED_MEMBERS:0x.*]]) {
 ; CHECK-NEXT:   TypeLeafKind: LF_FIELDLIST (0x1203)
 ; CHECK-NEXT:   Enumerator {
@@ -120,7 +126,7 @@ target triple = "x86_64-pc-windows-msvc19.0.24215"
 ; CHECK-NEXT:   }
 ; CHECK-NEXT:   NestedType {
 ; CHECK-NEXT:     TypeLeafKind: LF_NESTTYPE (0x1510)
-; CHECK-NEXT:     Type: int (0x74)
+; CHECK-NEXT:     Type: InnerTypedef ([[INNERALIAS]])
 ; CHECK-NEXT:     Name: InnerTypedef
 ; CHECK-NEXT:   }
 ; CHECK-NEXT:   NestedType {

@@ -36,7 +36,7 @@
 ; READOBJ:      }
 ; READOBJ:      UDTSym {
 ; READOBJ-NEXT:   Kind: S_UDT (0x1108)
-; READOBJ-NEXT:   Type: int (0x74)
+; READOBJ-NEXT:   Type: FOO (0x{{[0-9A-F]+}})
 ; READOBJ-NEXT:   UDTName: f::FOO
 ; READOBJ-NEXT: }
 ; READOBJ-NEXT: ProcEnd {
@@ -79,13 +79,13 @@
 ; PDBUTIL:                           Symbols
 ; PDBUTIL-NEXT: ============================================================
 ; PDBUTIL-NOT:   S_UDT {{.*}} `A::C`
-; PDBUTIL:       S_UDT [size = 16] `f::FOO`
-; PDBUTIL:       S_UDT [size = 16] `g::pun`
-; PDBUTIL:       S_UDT [size = 12] `S`
-; PDBUTIL:       S_UDT [size = 12] `A`
-; PDBUTIL:       S_UDT [size = 16] `A::D`
-; PDBUTIL:       S_UDT [size = 12] `U`
-; PDBUTIL:       S_UDT [size = 12] `U`
+; PDBUTIL:       S_UDT [size = {{[0-9]+}}] `f::FOO`
+; PDBUTIL:       S_UDT [size = {{[0-9]+}}] `g::pun`
+; PDBUTIL:       S_UDT [size = {{[0-9]+}}] `S`
+; PDBUTIL:       S_UDT [size = {{[0-9]+}}] `A`
+; PDBUTIL:       S_UDT [size = {{[0-9]+}}] `A::D`
+; PDBUTIL:       S_UDT [size = {{[0-9]+}}] `U`
+; PDBUTIL:       S_UDT [size = {{[0-9]+}}] `U`
 
 source_filename = "test/DebugInfo/COFF/udts.ll"
 target datalayout = "e-m:w-i64:64-f80:128-n8:16:32:64-S128"

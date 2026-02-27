@@ -157,12 +157,17 @@
 ; CHECK:       Volatile (0x2)
 ; CHECK:     ]
 ; CHECK:   }
-; CHECK:   Array (0x1010) {
+; CHECK:   Alias (0x1010) {
+; CHECK:     TypeLeafKind: LF_ALIAS (0x150A)
+; CHECK:     UnderlyingType: const volatile int (0x100F)
+; CHECK:     Name: T_INT
+; CHECK:   }
+; CHECK:   Array (0x1011) {
 ; CHECK:     TypeLeafKind: LF_ARRAY (0x1503)
-; CHECK:     ElementType: const volatile int (0x100F)
+; CHECK:     ElementType: T_INT (0x1010)
 ; CHECK:     IndexType: unsigned long (0x22)
 ; CHECK:     SizeOf: 16
-; CHECK:     Name: 
+; CHECK:     Name:
 ; CHECK:   }
 ; CHECK: ]
 
