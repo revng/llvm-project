@@ -17,21 +17,27 @@
 ; FIXME: sizeof(a) in the user program is 1, but we claim it is 4 because
 ; sometimes the frontend lies to us. See array-types-advanced.ll for an example.
 ;
-; CHECK:	# Array (0x1004)
+; CHECK:	# Alias (0x1004)
+; CHECK:	.short	0xe                     # Record length
+; CHECK:	.short	0x150a                  # Record kind: LF_ALIAS
+; CHECK:	.long	0x1003                  # UnderlyingType: YYSTYPE
+; CHECK:	.asciz	"YYSTYPE"               # Name
+
+; CHECK:	# Array (0x1005)
 ; CHECK:	.short	0xe                     # Record length
 ; CHECK:	.short	0x1503                  # Record kind: LF_ARRAY
-; CHECK:	.long	0x1003                  # ElementType: YYSTYPE
+; CHECK:	.long	0x1004                  # ElementType: YYSTYPE
 ; CHECK:	.long	0x23                    # IndexType: unsigned __int64
 ; CHECK:	.short	0x4                     # SizeOf
 ; CHECK:	.byte	0                       # Name
 ; CHECK:	.byte	241
 
-; CHECK:	# Union (0x1006)
+; CHECK:	# Union (0x1007)
 ; CHECK:	.short	0x22                    # Record length
 ; CHECK:	.short	0x1506                  # Record kind: LF_UNION
 ; CHECK:	.short	0x1                     # MemberCount
 ; CHECK:	.short	0x600                   # Properties ( HasUniqueName (0x200) | Sealed (0x400) )
-; CHECK:	.long	0x1005                  # FieldList: <field list>
+; CHECK:	.long	0x1006                  # FieldList: <field list>
 ; CHECK:	.short	0x4                     # SizeOf
 ; CHECK:	.asciz	"YYSTYPE"               # Name
 ; CHECK:	.asciz	".?ATYYSTYPE@@"         # LinkageName

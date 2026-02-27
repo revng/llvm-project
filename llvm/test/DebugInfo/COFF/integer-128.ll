@@ -18,7 +18,7 @@
 ; ASM-LABEL: .long   241                             # Symbol subsection for globals
 ;
 ; ASM-LABEL: .short	4359                            # Record kind: S_CONSTANT
-; ASM-NEXT:  .long	4110                            # Type
+; ASM-NEXT:  .long	4111                            # Type
 ; ASM-NEXT:  .byte	0x0a, 0x80, 0xff, 0xff          # Value
 ; ASM-NEXT:  .byte	0xff, 0xff, 0xff, 0xff
 ; ASM-NEXT:  .byte	0xff, 0xff
@@ -26,7 +26,7 @@
 ; ASM-NEXT:  .p2align	2
 ;
 ; ASM-LABEL: .short	4359                            # Record kind: S_CONSTANT
-; ASM-NEXT:  .long	4111                            # Type
+; ASM-NEXT:  .long	4112                            # Type
 ; ASM-NEXT:  .byte	0x09, 0x80, 0x00, 0x00          # Value
 ; ASM-NEXT:  .byte	0x00, 0x00, 0x00, 0x00
 ; ASM-NEXT:  .byte	0x00, 0x80

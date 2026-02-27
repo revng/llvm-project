@@ -1,8 +1,8 @@
 ; RUN: llc -filetype=obj %s -o %t.obj
 ; RUN: llvm-pdbutil dump -symbols -types %t.obj | FileCheck %s
 
-; Make sure that `gv`, `Bar`, and `Baz` all point to the complete type index of
-; Foo (0x1002), and not the forward declaration index (0x1000).
+; Make sure that `gv`, `Bar`, and `Baz` reference proper type indices.
+; With LF_ALIAS, typedefs get their own type records.
 
 ; C++ source:
 ; struct Foo {
@@ -19,26 +19,28 @@
 ; CHECK:          unique name: `.?AUFoo@@`
 ; CHECK:          vtable: <no type>, base list: <no type>, field list: <no type>
 ; CHECK:          options: forward ref | has unique name, sizeof 0
-; CHECK: 0x1001 | LF_FIELDLIST [size = 16]
+; CHECK: 0x1001 | LF_ALIAS [size = 12] alias = Bar, underlying type = 0x1000
+; CHECK: 0x1002 | LF_ALIAS [size = 12] alias = Baz, underlying type = 0x1001
+; CHECK: 0x1003 | LF_FIELDLIST [size = 16]
 ; CHECK:          - LF_MEMBER [name = `x`, Type = 0x0074 (int), offset = 0, attrs = public]
-; CHECK: 0x1002 | LF_STRUCTURE [size = 36] `Foo`
+; CHECK: 0x1004 | LF_STRUCTURE [size = 36] `Foo`
 ; CHECK:          unique name: `.?AUFoo@@`
-; CHECK:          vtable: <no type>, base list: <no type>, field list: 0x1001
+; CHECK:          vtable: <no type>, base list: <no type>, field list: 0x1003
 ; CHECK:          options: has unique name, sizeof 4
-; CHECK: 0x1004 | LF_UDT_SRC_LINE [size = 16]
-; CHECK:          udt = 0x1002, file = 4099, line = 1
+; CHECK: 0x1006 | LF_UDT_SRC_LINE [size = 16]
+; CHECK:          udt = 0x1004, file = 4101, line = 1
 
 ; CHECK:                           Symbols
 ; CHECK: ============================================================
 ; CHECK:   Mod 0000 | `.debug$S`:
 ; CHECK:        0 | S_GDATA32 [size = 20] `gv`
-; CHECK:            type = 0x1002 (Foo), addr = 0000:0000
+; CHECK:            type = 0x1002 (Baz), addr = 0000:0000
 ; CHECK:        0 | S_UDT [size = 12] `Bar`
-; CHECK:            original type = 0x1002
+; CHECK:            original type = 0x1001
 ; CHECK:        0 | S_UDT [size = 12] `Baz`
 ; CHECK:            original type = 0x1002
 ; CHECK:        0 | S_UDT [size = 12] `Foo`
-; CHECK:            original type = 0x1002
+; CHECK:            original type = 0x1004
 
 ; ModuleID = 't.cpp'
 source_filename = "t.cpp"

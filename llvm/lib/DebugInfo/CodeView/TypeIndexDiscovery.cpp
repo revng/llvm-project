@@ -308,6 +308,9 @@ static void discoverTypeIndices(ArrayRef<uint8_t> Content, TypeLeafKind Kind,
   case TypeLeafKind::LF_MODIFIER:
     Refs.push_back({TiRefKind::TypeRef, 0, 1});
     break;
+  case TypeLeafKind::LF_ALIAS:
+    Refs.push_back({TiRefKind::TypeRef, 0, 1});
+    break;
   case TypeLeafKind::LF_PROCEDURE:
     Refs.push_back({TiRefKind::TypeRef, 0, 1});
     Refs.push_back({TiRefKind::TypeRef, 8, 1});

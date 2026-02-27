@@ -34,7 +34,7 @@
 ; CHECK:    }
 ; CHECK:    UDTSym {
 ; CHECK:      Kind: S_UDT (0x1108)
-; CHECK:      Type: void (int, float, <no type>)* (0x100F)
+; CHECK:      Type: FuncTypedef (0x1010)
 ; CHECK:      UDTName: FuncTypedef
 ; CHECK:    }
 ; CHECK:  ]

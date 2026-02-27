@@ -29,7 +29,7 @@
 ; CHECK:     DataSym {
 ; CHECK:       Kind: S_LDATA32 (0x110C)
 ; CHECK:       DataOffset: .rdata+0x8
-; CHECK:       Type: impl$<u32, global_rust::Foo>::vtable_type$ (0x101D)
+; CHECK:       Type: impl$<u32, global_rust::Foo>::vtable_type$ (0x1020)
 ; CHECK:       DisplayName: impl$<u32, global_rust::Foo>::vtable$
 ; CHECK:       LinkageName: .rdata
 ; CHECK:     }

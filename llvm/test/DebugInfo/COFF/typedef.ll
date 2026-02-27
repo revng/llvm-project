@@ -1,9 +1,16 @@
 ; RUN: llc < %s -filetype=obj | llvm-readobj - --codeview | FileCheck %s
 
+; CHECK: CodeViewTypes [
+; CHECK:   Alias (0x1003) {
+; CHECK:     TypeLeafKind: LF_ALIAS (0x150A)
+; CHECK:     UnderlyingType: wchar_t (0x71)
+; CHECK:     Name: XYZ
+; CHECK:   }
+; CHECK: ]
 ; CHECK: CodeViewDebugInfo [
 ; CHECK:   Subsection [
 ; CHECK:     LocalSym {
-; CHECK:       Type: wchar_t (0x71)
+; CHECK:       Type: XYZ (0x1003)
 ; CHECK:       Flags [ (0x0)
 ; CHECK:       ]
 ; CHECK:       VarName: foo
@@ -11,7 +18,7 @@
 ; CHECK:   Subsection [
 ; CHECK:     SubSectionType: Symbols (0xF1)
 ; CHECK:     UDTSym {
-; CHECK:       Type: wchar_t (0x71)
+; CHECK:       Type: XYZ (0x1003)
 ; CHECK:       UDTName: XYZ
 ; CHECK:     }
 ; CHECK:   ]
