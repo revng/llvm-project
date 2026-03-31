@@ -1879,6 +1879,19 @@ auto upper_bound(R &&Range, T &&Value, Compare C) {
                           std::forward<T>(Value), C);
 }
 
+/// Wrapper function around std::mismatch to find the first mismatching pair
+/// in two ranges.
+template <typename R1, typename R2>
+auto mismatch(R1 &&Range1, R2 &&Range2) {
+  return std::mismatch(adl_begin(Range1), adl_end(Range1), adl_begin(Range2),
+                       adl_end(Range2));
+}
+
+/// Returns the size of a range, i.e., the number of elements.
+template <typename R> auto range_size(R &&Range) {
+  return std::distance(adl_begin(Range), adl_end(Range));
+}
+
 template <typename R>
 void stable_sort(R &&Range) {
   std::stable_sort(adl_begin(Range), adl_end(Range));
