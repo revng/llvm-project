@@ -116,13 +116,6 @@ static ValueProfNode *allocateOneNode(void) {
 
   /* Early check to avoid value wrapping around.  */
   if (CurrentVNode + 1 > EndVNode) {
-    if (OutOfNodesWarnings++ < INSTR_PROF_MAX_VP_WARNS) {
-      PROF_WARN("Unable to track new values: %s. "
-                " Consider using option -mllvm -vp-counters-per-site=<n> to "
-                "allocate more"
-                " value profile counters at compile time. \n",
-                "Running out of static counters");
-    }
     return 0;
   }
   Node = COMPILER_RT_PTR_FETCH_ADD(ValueProfNode, CurrentVNode, 1);
