@@ -146,8 +146,8 @@ protected:
     /// Contains values from CommandMarkerKind enum.
     unsigned CommandMarker : 1;
   };
-  enum { NumBlockCommandCommentBits = NumCommentBits +
-                                      CommandInfo::NumCommandIDBits + 1 };
+  enum { NumBlockCommandCommentBits = NumCommentBits + 1 +
+                                      CommandInfo::NumCommandIDBits };
 
   class ParamCommandCommentBitfields {
     friend class ParamCommandComment;
