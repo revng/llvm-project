@@ -2579,6 +2579,57 @@ TEST(YAMLIO, TestWrapFlow) {
   }
 }
 
+TEST(YAMLIO, TestKeyValuePadding) {
+  FooBar Val;
+  Val.foo = 1;
+  Val.bar = 2;
+
+  // "foo" and "bar" are both three characters long.
+  const size_t KeyLen = 3;
+  size_t PadKeyColumn = 0;
+
+  {
+    // Default: keys are padded to column 16.
+    PadKeyColumn = 16;
+
+    std::string out;
+    llvm::raw_string_ostream ostr(out);
+    Output yout(ostr);
+    yout << Val;
+    ostr.flush();
+    EXPECT_EQ(out, std::string("---\n") +
+                   "foo:" + std::string(PadKeyColumn - KeyLen, ' ') + "1\n" +
+                   "bar:" + std::string(PadKeyColumn - KeyLen, ' ') + "2\n" +
+                   "...\n");
+  }
+  {
+    // A custom, narrower padding column.
+    PadKeyColumn = 8;
+
+    std::string out;
+    llvm::raw_string_ostream ostr(out);
+    Output yout(ostr, nullptr, /*WrapColumn=*/70, PadKeyColumn);
+    yout << Val;
+    PadKeyColumn = 8;
+    EXPECT_EQ(out, std::string("---\n") +
+                   "foo:" + std::string(PadKeyColumn - KeyLen, ' ') + "1\n" +
+                   "bar:" + std::string(PadKeyColumn - KeyLen, ' ') + "2\n" +
+                   "...\n");
+  }
+  {
+    // 0 disables padding: a single space follows the colon.
+    std::string out;
+    llvm::raw_string_ostream ostr(out);
+    Output yout(ostr, nullptr, /*WrapColumn=*/70, /*PadKeyColumn=*/0);
+    yout << Val;
+    ostr.flush();
+    EXPECT_EQ(out, "---\n"
+                   "foo: 1\n"
+                   "bar: 2\n"
+                   "...\n");
+  }
+}
+
 struct MappingContext {
   int A = 0;
 };

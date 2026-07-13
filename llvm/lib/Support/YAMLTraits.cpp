@@ -464,8 +464,10 @@ bool Input::canElideEmptySequence() {
 //  Output
 //===----------------------------------------------------------------------===//
 
-Output::Output(raw_ostream &yout, void *context, int WrapColumn)
-    : IO(context), Out(yout), WrapColumn(WrapColumn) {}
+Output::Output(raw_ostream &yout, void *context, int WrapColumn,
+               int PadKeyColumn)
+    : IO(context), Out(yout), WrapColumn(WrapColumn),
+      PadKeyColumn(PadKeyColumn) {}
 
 Output::~Output() = default;
 
@@ -839,11 +841,12 @@ void Output::newLineCheck(bool EmptySequence) {
 void Output::paddedKey(StringRef key) {
   output(key);
   output(":");
-  const char *spaces = "                ";
-  if (key.size() < strlen(spaces))
-    Padding = &spaces[key.size()];
-  else
+  if (PadKeyColumn > 0 && key.size() < static_cast<size_t>(PadKeyColumn)) {
+    PaddingStorage.assign(static_cast<size_t>(PadKeyColumn) - key.size(), ' ');
+    Padding = PaddingStorage;
+  } else {
     Padding = " ";
+  }
 }
 
 void Output::flowKey(StringRef Key) {

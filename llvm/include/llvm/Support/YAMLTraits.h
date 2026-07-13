@@ -1624,7 +1624,8 @@ private:
 ///
 class Output : public IO {
 public:
-  Output(raw_ostream &, void *Ctxt = nullptr, int WrapColumn = 70);
+  Output(raw_ostream &, void *Ctxt = nullptr, int WrapColumn = 70,
+         int PadKeyColumn = 16);
   ~Output() override;
 
   /// Set whether or not to output optional values which are equal
@@ -1700,6 +1701,7 @@ private:
 
   raw_ostream &Out;
   int WrapColumn;
+  int PadKeyColumn;
   SmallVector<InState, 8> StateStack;
   int Column = 0;
   int ColumnAtFlowStart = 0;
@@ -1710,6 +1712,7 @@ private:
   bool WriteDefaultValues = false;
   StringRef Padding;
   StringRef PaddingBeforeContainer;
+  std::string PaddingStorage;
 };
 
 template <typename T, typename Context>
