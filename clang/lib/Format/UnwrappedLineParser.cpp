@@ -3658,6 +3658,14 @@ bool UnwrappedLineParser::parseEnum() {
   if (FormatTok->isOneOf(tok::kw_class, tok::kw_struct))
     nextToken();
 
+  // Skip attribute and typename macros between 'enum' and the enum name, e.g.
+  // "enum ATTR TYPE_MACRO(int) Name {".
+  while (FormatTok->isOneOf(TT_AttributeMacro, TT_TypenameMacro)) {
+    nextToken();
+    if (FormatTok->is(tok::l_paren))
+      parseParens();
+  }
+
   while (FormatTok->Tok.getIdentifierInfo() ||
          FormatTok->isOneOf(tok::colon, tok::coloncolon, tok::less,
                             tok::greater, tok::comma, tok::question,

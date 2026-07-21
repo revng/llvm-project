@@ -3824,6 +3824,30 @@ TEST_F(FormatTest, FormatsEnumTypes) {
   verifyFormat("enum X : std::uint32_t { A, B };");
 }
 
+TEST_F(FormatTest, FormatsEnumWithMacros) {
+  // A single function-like macro before the enum name works without config.
+  verifyFormat("enum TYPE_MACRO(int64_t) E { A, B };");
+
+  // Attribute and typename macros between 'enum' and the name are skipped,
+  // including several in a row and function-like ones, when configured.
+  FormatStyle Style = getLLVMStyle();
+  Style.AttributeMacros.push_back("ATTR");
+  Style.TypenameMacros.push_back("TYPE_MACRO");
+  verifyFormat("enum ATTR TYPE_MACRO(int64_t) E { A, B };", Style);
+  verifyFormat("enum ATTR ATTR E { A, B };", Style);
+  Style.AllowShortEnumsOnASingleLine = false;
+  verifyFormat("enum ATTR TYPE_MACRO(int64_t) E {\n"
+               "  A,\n"
+               "  B\n"
+               "};",
+               Style);
+
+  // An elaborate type used as a return type or variable type is not an enum
+  // definition and must be left alone.
+  verifyFormat("enum Color foo() { return RED; }");
+  verifyFormat("enum Color c { 0 };");
+}
+
 TEST_F(FormatTest, FormatsTypedefEnum) {
   FormatStyle Style = getLLVMStyleWithColumns(40);
   verifyFormat("typedef enum {} EmptyEnum;");
