@@ -1401,6 +1401,17 @@ ConstantRange ConstantRange::binaryNot() const {
   return ConstantRange(APInt::getAllOnes(getBitWidth())).sub(*this);
 }
 
+// Bitwise operations preserve redundant sign bits even when their value is
+// unknown. Bound the result by the wider signed representation of the inputs.
+static ConstantRange getBitwiseSignedRange(const ConstantRange &LHS,
+                                          const ConstantRange &RHS) {
+  unsigned Width = LHS.getBitWidth();
+  unsigned SignedWidth = std::max(LHS.getMinSignedBits(), RHS.getMinSignedBits());
+  return ConstantRange::getNonEmpty(
+      APInt::getSignedMinValue(SignedWidth).sext(Width),
+      APInt::getSignedMaxValue(SignedWidth).sext(Width) + 1);
+}
+
 /// Estimate the 'bit-masked AND' operation's lower bound.
 ///
 /// E.g., given two ranges as follows (single quotes are separators and
@@ -1467,7 +1478,8 @@ ConstantRange ConstantRange::binaryAnd(const ConstantRange &Other) const {
   auto LowerBound = estimateBitMaskedAndLowerBound(*this, Other);
   ConstantRange UMinUMaxRange = getNonEmpty(
       LowerBound, APIntOps::umin(Other.getUnsignedMax(), getUnsignedMax()) + 1);
-  return KnownBitsRange.intersectWith(UMinUMaxRange);
+  return KnownBitsRange.intersectWith(UMinUMaxRange)
+      .intersectWith(getBitwiseSignedRange(*this, Other));
 }
 
 ConstantRange ConstantRange::binaryOr(const ConstantRange &Other) const {
@@ -1487,7 +1499,8 @@ ConstantRange ConstantRange::binaryOr(const ConstantRange &Other) const {
   // Upper wrapped range.
   ConstantRange UMaxUMinRange = getNonEmpty(
       APIntOps::umax(getUnsignedMin(), Other.getUnsignedMin()), UpperBound);
-  return KnownBitsRange.intersectWith(UMaxUMinRange);
+  return KnownBitsRange.intersectWith(UMaxUMinRange)
+      .intersectWith(getBitwiseSignedRange(*this, Other));
 }
 
 ConstantRange ConstantRange::binaryXor(const ConstantRange &Other) const {
@@ -1519,7 +1532,7 @@ ConstantRange ConstantRange::binaryXor(const ConstantRange &Other) const {
     CR = CR.intersectWith(Other.sub(*this), PreferredRangeType::Unsigned);
   else if ((~RHSKnown.Zero).isSubsetOf(LHSKnown.One))
     CR = CR.intersectWith(this->sub(Other), PreferredRangeType::Unsigned);
-  return CR;
+  return CR.intersectWith(getBitwiseSignedRange(*this, Other));
 }
 
 ConstantRange

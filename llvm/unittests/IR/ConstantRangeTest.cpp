@@ -2567,6 +2567,15 @@ TEST_F(ConstantRangeTest, binaryXor) {
       CheckSingleElementsOnly);
 }
 
+TEST_F(ConstantRangeTest, BitwiseRedundantSignBits) {
+  ConstantRange SignedByte(APInt(64, -128, true), APInt(64, 128));
+  ConstantRange SignedNibble(APInt(64, -8, true), APInt(64, 8));
+  EXPECT_EQ(SignedByte.binaryAnd(SignedNibble), SignedByte);
+  EXPECT_EQ(SignedByte.binaryOr(SignedNibble), SignedByte);
+  EXPECT_EQ(SignedByte.binaryXor(SignedNibble), SignedByte);
+  EXPECT_EQ(SignedNibble.binaryXor(SignedNibble), SignedNibble);
+}
+
 TEST_F(ConstantRangeTest, binaryNot) {
   TestUnaryOpExhaustive(
       [](const ConstantRange &CR) { return CR.binaryNot(); },
