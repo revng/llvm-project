@@ -24,9 +24,12 @@
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallPtrSet.h"
+#include "llvm/IR/ConstantRange.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/Pass.h"
+#include <functional>
 #include <optional>
+#include <utility>
 
 namespace llvm {
 
@@ -39,8 +42,15 @@ class raw_ostream;
 
 class DemandedBits {
 public:
-  DemandedBits(Function &F, AssumptionCache &AC, DominatorTree &DT) :
-    F(F), AC(AC), DT(DT) {}
+  /// Return a conservative range for a scalar integer operand at this use.
+  /// Full range means unknown. Answers must include every possible undef
+  /// choice, remain stable while this analysis is valid, and not depend on
+  /// demanded bits. The operand's bit width must match the range's bit width.
+  using RangeQuery = std::function<ConstantRange(const Use &)>;
+
+  DemandedBits(Function &F, AssumptionCache &AC, DominatorTree &DT,
+               RangeQuery GetRange = {})
+      : F(F), AC(AC), DT(DT), GetRange(std::move(GetRange)) {}
 
   /// Return the bits demanded from instruction I.
   ///
@@ -79,7 +89,12 @@ public:
                                            const KnownBits &RHS);
 
 private:
-  /// Compute known bits for an operand at its use.
+  /// Return known bits and interval bounds refined with cached GetRange
+  /// results. Preserve exact endpoints that KnownBits cannot express.
+  /// Unsupported or contradictory ranges retain Known and its original bounds.
+  std::pair<KnownBits, ConstantRange>
+  refineOperandRange(const Use &U, const KnownBits &Known);
+  /// Supplement ValueTracking with the known bits implied by GetRange.
   KnownBits getKnownBits(const Use &U);
   void performAnalysis();
   void determineLiveOperandBits(const Instruction *UserI, unsigned OperandNo,
@@ -89,6 +104,10 @@ private:
   Function &F;
   AssumptionCache &AC;
   DominatorTree &DT;
+  RangeQuery GetRange;
+
+  // A branch-local bound must not constrain a different use of the value.
+  DenseMap<const Use *, ConstantRange> Ranges;
 
   bool Analyzed = false;
 

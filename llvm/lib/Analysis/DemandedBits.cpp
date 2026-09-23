@@ -78,11 +78,44 @@ static bool isAlwaysLive(Instruction *I) {
          I->mayHaveSideEffects();
 }
 
+std::pair<KnownBits, ConstantRange>
+DemandedBits::refineOperandRange(const Use &U, const KnownBits &Known) {
+  ConstantRange Bounds = ConstantRange::fromKnownBits(Known, false);
+  if (!GetRange || !U->getType()->isIntegerTy() || isa<UndefValue>(U))
+    return {Known, Bounds};
+
+  auto It = Ranges.find(&U);
+  if (It == Ranges.end()) {
+    unsigned Width = Known.getBitWidth();
+    ConstantRange Range = GetRange(U);
+    assert(Range.getBitWidth() == Width && "Unexpected GetRange result width");
+    // An empty range does not provide usable information about demanded bits.
+    if (Range.getBitWidth() != Width || Range.isEmptySet())
+      Range = ConstantRange::getFull(Width);
+    It = Ranges.try_emplace(&U, Range).first;
+  }
+
+  const ConstantRange &Range = It->second;
+  KnownBits Refined = Range.toKnownBits();
+  Refined.Zero |= Known.Zero;
+  Refined.One |= Known.One;
+  // Ignore contradictory information instead of inferring additional dead bits.
+  if (Refined.hasConflict())
+    return {Known, Bounds};
+
+  ConstantRange RefinedBounds =
+      ConstantRange::fromKnownBits(Refined, false).intersectWith(Range);
+  if (RefinedBounds.isEmptySet())
+    return {Known, Bounds};
+
+  return {std::move(Refined), std::move(RefinedBounds)};
+}
+
 KnownBits DemandedBits::getKnownBits(const Use &U) {
   const auto *UserI = cast<Instruction>(U.getUser());
   const DataLayout &DL = UserI->getModule()->getDataLayout();
   KnownBits Known = computeKnownBits(U, DL, 0, &AC, UserI, &DT);
-  return Known;
+  return refineOperandRange(U, Known).first;
 }
 
 void DemandedBits::determineLiveOperandBits(const Instruction *UserI,
@@ -108,12 +141,25 @@ void DemandedBits::determineLiveOperandBits(const Instruction *UserI,
     if (Second)
       Known2 = getKnownBits(UserI->getOperandUse(*Second));
   };
-  // Return inclusive unsigned bounds on a variable shift amount. Larger
-  // amounts produce poison, so clamp both endpoints to BitWidth - 1.
+  // Return inclusive unsigned bounds on a variable shift amount, combining
+  // known bits with GetRange when present. For example:
+  //
+  //     %r = lshr i32 %x, %amount
+  //
+  // If %amount is in [0, 6), known bits alone only prove it is in [0, 8):
+  // all three low bits are unknown. Retaining the original range gives
+  // (Min, Max) = (0, 5), so demanding bit 0 of %r requires only bits 0 through
+  // 5 of %x, rather than bits 0 through 7.
+  //
+  // Clamp both endpoints to BitWidth - 1, as in the upstream transfer:
+  // larger amounts produce poison and impose no additional bit demands.
   auto GetShiftBounds = [&]() {
     ComputeKnownBits(1);
-    return std::make_pair(Known.getMinValue().getLimitedValue(BitWidth - 1),
-                          Known.getMaxValue().getLimitedValue(BitWidth - 1));
+    ConstantRange Bounds =
+        refineOperandRange(UserI->getOperandUse(1), Known).second;
+    return std::make_pair(
+        Bounds.getUnsignedMin().getLimitedValue(BitWidth - 1),
+        Bounds.getUnsignedMax().getLimitedValue(BitWidth - 1));
   };
   auto GetShiftedRange = [&](uint64_t Min, uint64_t Max, bool ShiftLeft) {
     auto ShiftF = [ShiftLeft](const APInt &Mask, unsigned ShiftAmnt) {
