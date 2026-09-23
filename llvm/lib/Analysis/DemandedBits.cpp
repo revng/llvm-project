@@ -42,6 +42,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
 #include <cstdint>
+#include <utility>
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -77,10 +78,18 @@ static bool isAlwaysLive(Instruction *I) {
          I->mayHaveSideEffects();
 }
 
-void DemandedBits::determineLiveOperandBits(
-    const Instruction *UserI, const Value *Val, unsigned OperandNo,
-    const APInt &AOut, APInt &AB, KnownBits &Known, KnownBits &Known2,
-    bool &KnownBitsComputed) {
+KnownBits DemandedBits::getKnownBits(const Use &U) {
+  const auto *UserI = cast<Instruction>(U.getUser());
+  const DataLayout &DL = UserI->getModule()->getDataLayout();
+  KnownBits Known = computeKnownBits(U, DL, 0, &AC, UserI, &DT);
+  return Known;
+}
+
+void DemandedBits::determineLiveOperandBits(const Instruction *UserI,
+                                            unsigned OperandNo,
+                                            const APInt &AOut, APInt &AB,
+                                            KnownBits &Known, KnownBits &Known2,
+                                            bool &KnownBitsComputed) {
   unsigned BitWidth = AB.getBitWidth();
 
   // We're called once per operand, but for some instructions, we need to
@@ -89,21 +98,23 @@ void DemandedBits::determineLiveOperandBits(
   // however, want to do this twice, so we cache the result in APInts that live
   // in the caller. For the two-relevant-operands case, both operand values are
   // provided here.
-  auto ComputeKnownBits =
-      [&](unsigned BitWidth, const Value *V1, const Value *V2) {
-        if (KnownBitsComputed)
-          return;
-        KnownBitsComputed = true;
+  auto ComputeKnownBits = [&](unsigned First,
+                              std::optional<unsigned> Second = std::nullopt) {
+    if (KnownBitsComputed)
+      return;
+    KnownBitsComputed = true;
 
-        const DataLayout &DL = UserI->getModule()->getDataLayout();
-        Known = KnownBits(BitWidth);
-        computeKnownBits(V1, Known, DL, 0, &AC, UserI, &DT);
-
-        if (V2) {
-          Known2 = KnownBits(BitWidth);
-          computeKnownBits(V2, Known2, DL, 0, &AC, UserI, &DT);
-        }
-      };
+    Known = getKnownBits(UserI->getOperandUse(First));
+    if (Second)
+      Known2 = getKnownBits(UserI->getOperandUse(*Second));
+  };
+  // Return inclusive unsigned bounds on a variable shift amount. Larger
+  // amounts produce poison, so clamp both endpoints to BitWidth - 1.
+  auto GetShiftBounds = [&]() {
+    ComputeKnownBits(1);
+    return std::make_pair(Known.getMinValue().getLimitedValue(BitWidth - 1),
+                          Known.getMaxValue().getLimitedValue(BitWidth - 1));
+  };
   auto GetShiftedRange = [&](uint64_t Min, uint64_t Max, bool ShiftLeft) {
     auto ShiftF = [ShiftLeft](const APInt &Mask, unsigned ShiftAmnt) {
       return ShiftLeft ? Mask.shl(ShiftAmnt) : Mask.lshr(ShiftAmnt);
@@ -147,9 +158,9 @@ void DemandedBits::determineLiveOperandBits(
           // We need some output bits, so we need all bits of the
           // input to the left of, and including, the leftmost bit
           // known to be one.
-          ComputeKnownBits(BitWidth, Val, nullptr);
-          AB = APInt::getHighBitsSet(BitWidth,
-                 std::min(BitWidth, Known.countMaxLeadingZeros()+1));
+          ComputeKnownBits(OperandNo);
+          AB = APInt::getHighBitsSet(
+              BitWidth, std::min(BitWidth, Known.countMaxLeadingZeros() + 1));
         }
         break;
       case Intrinsic::cttz:
@@ -157,9 +168,9 @@ void DemandedBits::determineLiveOperandBits(
           // We need some output bits, so we need all bits of the
           // input to the right of, and including, the rightmost bit
           // known to be one.
-          ComputeKnownBits(BitWidth, Val, nullptr);
-          AB = APInt::getLowBitsSet(BitWidth,
-                 std::min(BitWidth, Known.countMaxTrailingZeros()+1));
+          ComputeKnownBits(OperandNo);
+          AB = APInt::getLowBitsSet(
+              BitWidth, std::min(BitWidth, Known.countMaxTrailingZeros() + 1));
         }
         break;
       case Intrinsic::fshl:
@@ -199,7 +210,7 @@ void DemandedBits::determineLiveOperandBits(
     if (AOut.isMask()) {
       AB = AOut;
     } else {
-      ComputeKnownBits(BitWidth, UserI->getOperand(0), UserI->getOperand(1));
+      ComputeKnownBits(0, 1);
       AB = determineLiveOperandBitsAdd(OperandNo, AOut, Known, Known2);
     }
     break;
@@ -207,7 +218,7 @@ void DemandedBits::determineLiveOperandBits(
     if (AOut.isMask()) {
       AB = AOut;
     } else {
-      ComputeKnownBits(BitWidth, UserI->getOperand(0), UserI->getOperand(1));
+      ComputeKnownBits(0, 1);
       AB = determineLiveOperandBitsSub(OperandNo, AOut, Known, Known2);
     }
     break;
@@ -232,9 +243,7 @@ void DemandedBits::determineLiveOperandBits(
         else if (S->hasNoUnsignedWrap())
           AB |= APInt::getHighBitsSet(BitWidth, ShiftAmt);
       } else {
-        ComputeKnownBits(BitWidth, UserI->getOperand(1), nullptr);
-        uint64_t Min = Known.getMinValue().getLimitedValue(BitWidth - 1);
-        uint64_t Max = Known.getMaxValue().getLimitedValue(BitWidth - 1);
+        auto [Min, Max] = GetShiftBounds();
         // similar to Lshr case
         GetShiftedRange(Min, Max, /*ShiftLeft=*/false);
         const auto *S = cast<ShlOperator>(UserI);
@@ -257,9 +266,7 @@ void DemandedBits::determineLiveOperandBits(
         if (cast<LShrOperator>(UserI)->isExact())
           AB |= APInt::getLowBitsSet(BitWidth, ShiftAmt);
       } else {
-        ComputeKnownBits(BitWidth, UserI->getOperand(1), nullptr);
-        uint64_t Min = Known.getMinValue().getLimitedValue(BitWidth - 1);
-        uint64_t Max = Known.getMaxValue().getLimitedValue(BitWidth - 1);
+        auto [Min, Max] = GetShiftBounds();
         // Suppose AOut == 0b0000 0001
         // [min, max] = [1, 3]
         // iteration 1 shift by 1 mask is 0b0000 0011
@@ -295,9 +302,7 @@ void DemandedBits::determineLiveOperandBits(
         if (cast<AShrOperator>(UserI)->isExact())
           AB |= APInt::getLowBitsSet(BitWidth, ShiftAmt);
       } else {
-        ComputeKnownBits(BitWidth, UserI->getOperand(1), nullptr);
-        uint64_t Min = Known.getMinValue().getLimitedValue(BitWidth - 1);
-        uint64_t Max = Known.getMaxValue().getLimitedValue(BitWidth - 1);
+        auto [Min, Max] = GetShiftBounds();
         GetShiftedRange(Min, Max, /*ShiftLeft=*/true);
         if (Max &&
             (AOut & APInt::getHighBitsSet(BitWidth, Max)).getBoolValue()) {
@@ -324,7 +329,7 @@ void DemandedBits::determineLiveOperandBits(
     // other operand are dead (unless they're both zero, in which
     // case they can't both be dead, so just mark the LHS bits as
     // dead).
-    ComputeKnownBits(BitWidth, UserI->getOperand(0), UserI->getOperand(1));
+    ComputeKnownBits(0, 1);
     if (OperandNo == 0)
       AB &= ~Known2.Zero;
     else
@@ -337,7 +342,7 @@ void DemandedBits::determineLiveOperandBits(
     // other operand are dead (unless they're both one, in which
     // case they can't both be dead, so just mark the LHS bits as
     // dead).
-    ComputeKnownBits(BitWidth, UserI->getOperand(0), UserI->getOperand(1));
+    ComputeKnownBits(0, 1);
     if (OperandNo == 0)
       AB &= ~Known2.One;
     else
@@ -476,8 +481,8 @@ void DemandedBits::performAnalysis() {
         } else {
           // Bits of each operand that are used to compute alive bits of the
           // output are alive, all others are dead.
-          determineLiveOperandBits(UserI, OI, OI.getOperandNo(), AOut, AB,
-                                   Known, Known2, KnownBitsComputed);
+          determineLiveOperandBits(UserI, OI.getOperandNo(), AOut, AB, Known,
+                                   Known2, KnownBitsComputed);
 
           // Keep track of uses which have no demanded bits.
           if (AB.isZero())
@@ -535,8 +540,8 @@ APInt DemandedBits::getDemandedBits(Use *U) {
   KnownBits Known, Known2;
   bool KnownBitsComputed = false;
 
-  determineLiveOperandBits(UserI, *U, U->getOperandNo(), AOut, AB, Known,
-                           Known2, KnownBitsComputed);
+  determineLiveOperandBits(UserI, U->getOperandNo(), AOut, AB, Known, Known2,
+                           KnownBitsComputed);
 
   return AB;
 }
@@ -683,7 +688,7 @@ FunctionPass *llvm::createDemandedBitsWrapperPass() {
 AnalysisKey DemandedBitsAnalysis::Key;
 
 DemandedBits DemandedBitsAnalysis::run(Function &F,
-                                             FunctionAnalysisManager &AM) {
+                                       FunctionAnalysisManager &AM) {
   auto &AC = AM.getResult<AssumptionAnalysis>(F);
   auto &DT = AM.getResult<DominatorTreeAnalysis>(F);
   return DemandedBits(F, AC, DT);

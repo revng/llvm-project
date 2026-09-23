@@ -79,11 +79,12 @@ public:
                                            const KnownBits &RHS);
 
 private:
+  /// Compute known bits for an operand at its use.
+  KnownBits getKnownBits(const Use &U);
   void performAnalysis();
-  void determineLiveOperandBits(const Instruction *UserI,
-    const Value *Val, unsigned OperandNo,
-    const APInt &AOut, APInt &AB,
-    KnownBits &Known, KnownBits &Known2, bool &KnownBitsComputed);
+  void determineLiveOperandBits(const Instruction *UserI, unsigned OperandNo,
+                                const APInt &AOut, APInt &AB, KnownBits &Known,
+                                KnownBits &Known2, bool &KnownBitsComputed);
 
   Function &F;
   AssumptionCache &AC;
