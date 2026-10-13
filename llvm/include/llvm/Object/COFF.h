@@ -791,6 +791,7 @@ private:
 
   friend class ImportDirectoryEntryRef;
   friend class ExportDirectoryEntryRef;
+  friend class BaseRelocRef;
   const coff_file_header *COFFHeader;
   const coff_bigobj_file_header *COFFBigObjHeader;
   const pe32_header *PE32Header;
@@ -1220,7 +1221,9 @@ public:
   BaseRelocRef() = default;
   BaseRelocRef(const coff_base_reloc_block_header *Header,
                const COFFObjectFile *Owner)
-      : Header(Header), Index(0) {}
+      : Header(Header), Index(0), OwningObject(Owner) {
+    skipExhaustedBlocks();
+  }
 
   bool operator==(const BaseRelocRef &Other) const;
   void moveNext();
@@ -1229,8 +1232,12 @@ public:
   Error getRVA(uint32_t &Result) const;
 
 private:
+  /// Moves to the next block until the current one has an entry at Index.
+  void skipExhaustedBlocks();
+
   const coff_base_reloc_block_header *Header;
   uint32_t Index;
+  const COFFObjectFile *OwningObject = nullptr;
 };
 
 class ResourceSectionRef {

@@ -1,0 +1,47 @@
+## Check that blocks of the base relocation table without entries are skipped,
+## wherever they appear in the table.
+# RUN: yaml2obj %s -o %t.empty -DSIZE=48 \
+# RUN:   -DDATA=0010000008000000002000000C000000043000000030000008000000004000000C00000008A010300050000008000000
+# RUN: llvm-readobj --coff-basereloc %t.empty | FileCheck %s --check-prefix=EMPTY
+
+# EMPTY:      BaseReloc [
+# EMPTY-NEXT:   Entry {
+# EMPTY-NEXT:     Type: HIGHLOW
+# EMPTY-NEXT:     Address: 0x2004
+# EMPTY-NEXT:   }
+# EMPTY-NEXT:   Entry {
+# EMPTY-NEXT:     Type: ABSOLUTE
+# EMPTY-NEXT:     Address: 0x2000
+# EMPTY-NEXT:   }
+# EMPTY-NEXT:   Entry {
+# EMPTY-NEXT:     Type: DIR64
+# EMPTY-NEXT:     Address: 0x4008
+# EMPTY-NEXT:   }
+# EMPTY-NEXT:   Entry {
+# EMPTY-NEXT:     Type: HIGHLOW
+# EMPTY-NEXT:     Address: 0x4010
+# EMPTY-NEXT:   }
+# EMPTY-NEXT: ]
+
+## MSVC emits a single block without entries for images without relocations.
+# RUN: yaml2obj %s -o %t.only-empty -DSIZE=8 -DDATA=0010000008000000
+# RUN: llvm-readobj --coff-basereloc %t.only-empty | FileCheck %s --check-prefix=ONLY-EMPTY
+
+# ONLY-EMPTY:      BaseReloc [
+# ONLY-EMPTY-NEXT: ]
+
+--- !COFF
+OptionalHeader:
+  BaseRelocationTable:
+    RelativeVirtualAddress: 0x1000
+    Size:                   [[SIZE]]
+header:
+  Machine:         IMAGE_FILE_MACHINE_AMD64
+  Characteristics: [ IMAGE_FILE_EXECUTABLE_IMAGE ]
+sections:
+  - Name:            .reloc
+    Characteristics: [ IMAGE_SCN_CNT_INITIALIZED_DATA, IMAGE_SCN_MEM_READ ]
+    VirtualAddress:  0x1000
+    VirtualSize:     [[SIZE]]
+    SectionData:     [[DATA]]
+symbols:         []

@@ -1724,20 +1724,25 @@ bool BaseRelocRef::operator==(const BaseRelocRef &Other) const {
 }
 
 void BaseRelocRef::moveNext() {
-  // Header->BlockSize is the size of the current block, including the
-  // size of the header itself.
-  uint32_t Size = sizeof(*Header) +
-      sizeof(coff_base_reloc_block_entry) * (Index + 1);
-  if (Size == Header->BlockSize) {
+  ++Index;
+  skipExhaustedBlocks();
+}
+
+void BaseRelocRef::skipExhaustedBlocks() {
+  while (Header != OwningObject->BaseRelocEnd) {
+    // Header->BlockSize is the size of the current block, including the
+    // size of the header itself.
+    uint32_t Size =
+        sizeof(*Header) + sizeof(coff_base_reloc_block_entry) * Index;
+    if (Size < Header->BlockSize)
+      return;
+
     // .reloc contains a list of base relocation blocks. Each block
-    // consists of the header followed by entries. The header contains
-    // how many entories will follow. When we reach the end of the
-    // current block, proceed to the next block.
+    // consists of the header followed by entries, possibly none. When we
+    // reach the end of the current block, proceed to the next block.
     Header = reinterpret_cast<const coff_base_reloc_block_header *>(
         reinterpret_cast<const uint8_t *>(Header) + Size);
     Index = 0;
-  } else {
-    ++Index;
   }
 }
 
