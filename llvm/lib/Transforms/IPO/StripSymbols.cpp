@@ -20,6 +20,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Transforms/IPO/StripSymbols.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DebugInfo.h"
@@ -300,7 +301,8 @@ bool StripDebugDeclare::runOnModule(Module &M) {
 /// Accepts any DIScope and uses recursive bottom-up approach to reach either
 /// DISubprogram or DILexicalBlockBase.
 static void
-collectCUsWithScope(const DIScope *Scope, std::set<DICompileUnit *> &LiveCUs,
+collectCUsWithScope(const DIScope *Scope,
+                    SmallSetVector<DICompileUnit *, 8> &LiveCUs,
                     SmallPtrSet<const DIScope *, 8> &VisitedScopes) {
   if (!Scope)
     return;
@@ -326,7 +328,7 @@ collectCUsWithScope(const DIScope *Scope, std::set<DICompileUnit *> &LiveCUs,
 
 static void
 collectCUsForInlinedFuncs(const DILocation *Loc,
-                          std::set<DICompileUnit *> &LiveCUs,
+                          SmallSetVector<DICompileUnit *, 8> &LiveCUs,
                           SmallPtrSet<const DIScope *, 8> &VisitedScopes) {
   if (!Loc || !Loc->getInlinedAt())
     return;
@@ -360,7 +362,7 @@ static bool stripDeadDebugInfoImpl(Module &M) {
       LiveGVs.insert(GVE);
   }
 
-  std::set<DICompileUnit *> LiveCUs;
+  SmallSetVector<DICompileUnit *, 8> LiveCUs;
   SmallPtrSet<const DIScope *, 8> VisitedScopes;
   // Any CU is live if is referenced from a subprogram metadata that is attached
   // to a function defined or inlined in the module.
