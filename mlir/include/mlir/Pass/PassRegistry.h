@@ -66,6 +66,10 @@ public:
   /// Returns a description for the pass, this never returns null.
   StringRef getPassDescription() const { return description; }
 
+  /// Returns the name of the operation that this pass operates on, or
+  /// std::nullopt if this is a generic OperationPass.
+  std::optional<StringRef> getOpName() const { return opName; }
+
   /// Print the help information for this pass. This includes the argument,
   /// description, and any pass options. `descIndent` is the indent that the
   /// descriptions should be aligned.
@@ -76,10 +80,11 @@ public:
 
 protected:
   PassRegistryEntry(
-      StringRef arg, StringRef description, const PassRegistryFunction &builder,
+      StringRef arg, StringRef description,
+      std::optional<llvm::StringRef> opName, const PassRegistryFunction &builder,
       std::function<void(function_ref<void(const detail::PassOptions &)>)>
           optHandler)
-      : arg(arg), description(description), builder(builder),
+      : arg(arg), description(description), opName(opName), builder(builder),
         optHandler(std::move(optHandler)) {}
 
 private:
@@ -88,6 +93,10 @@ private:
 
   /// Description of the pass.
   std::string description;
+
+  /// The name of the operation that this pass operates on, or std::nullopt if
+  /// this is a generic OperationPass.
+  std::optional<StringRef> opName;
 
   /// Function to register this entry to a pass manager pipeline.
   PassRegistryFunction builder;
@@ -101,10 +110,13 @@ private:
 class PassPipelineInfo : public PassRegistryEntry {
 public:
   PassPipelineInfo(
-      StringRef arg, StringRef description, const PassRegistryFunction &builder,
+      StringRef arg, StringRef description,
+      std::optional<llvm::StringRef> opName,
+      const PassRegistryFunction &builder,
       std::function<void(function_ref<void(const detail::PassOptions &)>)>
           optHandler)
-      : PassRegistryEntry(arg, description, builder, std::move(optHandler)) {}
+      : PassRegistryEntry(arg, description, opName, builder,
+                          std::move(optHandler)) {}
 };
 
 /// A structure to represent the information for a derived pass class.
@@ -113,6 +125,7 @@ public:
   /// PassInfo constructor should not be invoked directly, instead use
   /// PassRegistration or registerPass.
   PassInfo(StringRef arg, StringRef description,
+           std::optional<llvm::StringRef> opName,
            const PassAllocatorFunction &allocator);
 };
 
@@ -123,7 +136,9 @@ public:
 /// Register a specific dialect pipeline registry function with the system,
 /// typically used through the PassPipelineRegistration template.
 void registerPassPipeline(
-    StringRef arg, StringRef description, const PassRegistryFunction &function,
+    StringRef arg, StringRef description,
+    std::optional<llvm::StringRef> opName,
+    const PassRegistryFunction &function,
     std::function<void(function_ref<void(const detail::PassOptions &)>)>
         optHandler);
 
@@ -167,9 +182,15 @@ template <typename Options = EmptyPipelineOptions>
 struct PassPipelineRegistration {
   PassPipelineRegistration(
       StringRef arg, StringRef description,
+      std::function<void(OpPassManager &, const Options &options)> builder) :
+    PassPipelineRegistration(arg, description, std::nullopt, builder) {}
+
+  PassPipelineRegistration(
+      StringRef arg, StringRef description,
+      std::optional<llvm::StringRef> opName,
       std::function<void(OpPassManager &, const Options &options)> builder) {
     registerPassPipeline(
-        arg, description,
+        arg, description, opName,
         [builder](OpPassManager &pm, StringRef optionsStr,
                   function_ref<LogicalResult(const Twine &)> errorHandler) {
           Options options;
@@ -190,9 +211,15 @@ template <>
 struct PassPipelineRegistration<EmptyPipelineOptions> {
   PassPipelineRegistration(
       StringRef arg, StringRef description,
+      const std::function<void(OpPassManager &)> &builder) :
+    PassPipelineRegistration(arg, description, std::nullopt, builder) {}
+
+  PassPipelineRegistration(
+      StringRef arg, StringRef description,
+      std::optional<llvm::StringRef> opName,
       const std::function<void(OpPassManager &)> &builder) {
     registerPassPipeline(
-        arg, description,
+        arg, description, opName,
         [builder](OpPassManager &pm, StringRef optionsStr,
                   function_ref<LogicalResult(const Twine &)> errorHandler) {
           if (!optionsStr.empty())
