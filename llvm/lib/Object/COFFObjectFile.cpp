@@ -469,6 +469,17 @@ Error COFFObjectFile::getVaPtr(uint64_t Addr, uintptr_t &Res) const {
   return getRvaPtr((uint32_t)Rva, Res);
 }
 
+// Returns the size of the headers, which the loader maps at the image base:
+// there, RVAs and file offsets coincide.
+static uint32_t getMappedHeadersSize(const COFFObjectFile &Obj) {
+  uint64_t SizeOfHeaders = 0;
+  if (const pe32_header *PE32 = Obj.getPE32Header())
+    SizeOfHeaders = PE32->SizeOfHeaders;
+  else if (const pe32plus_header *PE32Plus = Obj.getPE32PlusHeader())
+    SizeOfHeaders = PE32Plus->SizeOfHeaders;
+  return std::min<uint64_t>(SizeOfHeaders, Obj.getData().size());
+}
+
 // Returns the file offset for the given RVA.
 Error COFFObjectFile::getRvaPtr(uint32_t Addr, uintptr_t &Res,
                                 const char *ErrorContext) const {
@@ -496,6 +507,10 @@ Error COFFObjectFile::getRvaPtr(uint32_t Addr, uintptr_t &Res,
       return Error::success();
     }
   }
+  if (Addr < getMappedHeadersSize(*this)) {
+    Res = reinterpret_cast<uintptr_t>(base()) + Addr;
+    return Error::success();
+  }
   if (ErrorContext)
     return createStringError(object_error::parse_failed,
                              "RVA 0x%" PRIx32 " for %s not found", Addr,
@@ -521,6 +536,11 @@ Error COFFObjectFile::getRvaAndSizeAsBytes(uint32_t RVA, uint32_t Size,
           ArrayRef<uint8_t>(reinterpret_cast<const uint8_t *>(Begin), Size);
       return Error::success();
     }
+  }
+  uint32_t HeadersSize = getMappedHeadersSize(*this);
+  if (RVA < HeadersSize && Size <= HeadersSize - RVA) {
+    Contents = ArrayRef<uint8_t>(base() + RVA, Size);
+    return Error::success();
   }
   if (ErrorContext)
     return createStringError(object_error::parse_failed,

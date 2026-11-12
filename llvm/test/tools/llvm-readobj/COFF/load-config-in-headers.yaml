@@ -1,0 +1,32 @@
+## Check that a load config table stored in the headers is found: the loader
+## maps the headers at the image base, so there RVAs are file offsets.
+# RUN: yaml2obj %s -o %t.headers -DRVA=0x800
+# RUN: llvm-readobj --coff-load-config %t.headers | FileCheck %s --check-prefix=HEADERS
+
+# HEADERS:      LoadConfig [
+# HEADERS-NEXT:   Size: 0x0
+# HEADERS-NEXT: ]
+
+## An RVA outside both the headers and the sections is still rejected.
+# RUN: yaml2obj %s -o %t.unmapped -DRVA=0x3000
+# RUN: not llvm-readobj --coff-load-config %t.unmapped 2>&1 | FileCheck %s --check-prefix=UNMAPPED
+
+# UNMAPPED: RVA 0x3000 for load config table not found
+
+--- !COFF
+OptionalHeader:
+  SectionAlignment: 0x1000
+  FileAlignment:    0x1000
+  LoadConfigTable:
+    RelativeVirtualAddress: [[RVA]]
+    Size:                   0x40
+header:
+  Machine:         IMAGE_FILE_MACHINE_I386
+  Characteristics: [ IMAGE_FILE_EXECUTABLE_IMAGE, IMAGE_FILE_32BIT_MACHINE ]
+sections:
+  - Name:            .text
+    Characteristics: [ IMAGE_SCN_CNT_CODE, IMAGE_SCN_MEM_EXECUTE, IMAGE_SCN_MEM_READ ]
+    VirtualAddress:  0x1000
+    VirtualSize:     1
+    SectionData:     C3
+symbols:         []
