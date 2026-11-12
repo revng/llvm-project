@@ -94,9 +94,11 @@ size_t PassRegistryEntry::getOptionWidth() const {
 //===----------------------------------------------------------------------===//
 
 void mlir::registerPassPipeline(
-    StringRef arg, StringRef description, const PassRegistryFunction &function,
+    StringRef arg, StringRef description,
+    std::optional<llvm::StringRef> opName,
+    const PassRegistryFunction &function,
     std::function<void(function_ref<void(const PassOptions &)>)> optHandler) {
-  PassPipelineInfo pipelineInfo(arg, description, function,
+  PassPipelineInfo pipelineInfo(arg, description, opName, function,
                                 std::move(optHandler));
   bool inserted = passPipelineRegistry->try_emplace(arg, pipelineInfo).second;
   assert(inserted && "Pass pipeline registered multiple times");
@@ -108,9 +110,10 @@ void mlir::registerPassPipeline(
 //===----------------------------------------------------------------------===//
 
 PassInfo::PassInfo(StringRef arg, StringRef description,
+                   std::optional<llvm::StringRef> opName,
                    const PassAllocatorFunction &allocator)
     : PassRegistryEntry(
-          arg, description, buildDefaultRegistryFn(allocator),
+          arg, description, opName, buildDefaultRegistryFn(allocator),
           // Use a temporary pass to provide an options instance.
           [=](function_ref<void(const PassOptions &)> optHandler) {
             optHandler(allocator()->passOptions);
@@ -124,7 +127,7 @@ void mlir::registerPass(const PassAllocatorFunction &function) {
                              pass->getName() +
                              "' pass that does not override `getArgument()`");
   StringRef description = pass->getDescription();
-  PassInfo passInfo(arg, description, function);
+  PassInfo passInfo(arg, description, pass->getOpName(), function);
   passRegistry->try_emplace(arg, passInfo);
 
   // Verify that the registered pass has the same ID as any registered to this
